@@ -82,6 +82,31 @@ const columns: ColumnDef<PlayerMetricSummary>[] = [
     cell: ({ row }) => formatPercent(row.original.turnoverPercentage),
   },
   {
+    accessorKey: "usageRate",
+    header: "USG%",
+    cell: ({ row }) => formatPercent(row.original.usageRate),
+  },
+  {
+    accessorKey: "assistPercentage",
+    header: "AST%",
+    cell: ({ row }) => formatPercent(row.original.assistPercentage),
+  },
+  {
+    accessorKey: "reboundPercentage",
+    header: "TRB%",
+    cell: ({ row }) => formatPercent(row.original.reboundPercentage),
+  },
+  {
+    accessorKey: "stealPercentage",
+    header: "STL%",
+    cell: ({ row }) => formatPercent(row.original.stealPercentage),
+  },
+  {
+    accessorKey: "blockPercentage",
+    header: "BLK%",
+    cell: ({ row }) => formatPercent(row.original.blockPercentage),
+  },
+  {
     accessorKey: "gameScoreAverage",
     header: "GmSc",
     cell: ({ row }) => formatNumber(row.original.gameScoreAverage),

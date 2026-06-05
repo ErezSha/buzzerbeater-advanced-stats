@@ -113,6 +113,29 @@ export function totalsFromTeamStat(team: TeamGameStat | null | undefined): StatT
   };
 }
 
+export function addStatTotals(a: StatTotals, b: StatTotals): StatTotals {
+  return {
+    minutes: addNullable(a.minutes, b.minutes),
+    points: a.points + b.points,
+    fieldGoals: addNullable(a.fieldGoals, b.fieldGoals),
+    fieldGoalAttempts: addNullable(a.fieldGoalAttempts, b.fieldGoalAttempts),
+    twoPointMakes: addNullable(a.twoPointMakes, b.twoPointMakes),
+    twoPointAttempts: addNullable(a.twoPointAttempts, b.twoPointAttempts),
+    threePointMakes: addNullable(a.threePointMakes, b.threePointMakes),
+    threePointAttempts: addNullable(a.threePointAttempts, b.threePointAttempts),
+    freeThrows: addNullable(a.freeThrows, b.freeThrows),
+    freeThrowAttempts: addNullable(a.freeThrowAttempts, b.freeThrowAttempts),
+    offensiveRebounds: addNullable(a.offensiveRebounds, b.offensiveRebounds),
+    defensiveRebounds: addNullable(a.defensiveRebounds, b.defensiveRebounds),
+    totalRebounds: addNullable(a.totalRebounds, b.totalRebounds),
+    assists: addNullable(a.assists, b.assists),
+    steals: addNullable(a.steals, b.steals),
+    blocks: addNullable(a.blocks, b.blocks),
+    turnovers: addNullable(a.turnovers, b.turnovers),
+    fouls: addNullable(a.fouls, b.fouls),
+  };
+}
+
 export function shootingMetrics(totals: StatTotals): ShootingMetrics {
   return {
     fieldGoalPercentage: fieldGoalPercentage(

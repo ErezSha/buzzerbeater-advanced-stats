@@ -137,6 +137,11 @@ export interface PlayerMetricSummary {
   assists: number;
   shooting: ShootingMetrics;
   turnoverPercentage: number | null;
+  assistPercentage: number | null;
+  blockPercentage: number | null;
+  stealPercentage: number | null;
+  reboundPercentage: number | null;
+  usageRate: number | null;
   gameScoreTotal: number | null;
   gameScoreAverage: number | null;
   seasonStat?: PlayerSeasonStat | null;

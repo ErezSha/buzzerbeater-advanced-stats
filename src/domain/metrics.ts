@@ -159,6 +159,90 @@ export function gameScore(input: GameScoreInput): NullableNumber {
   );
 }
 
+export function assistPercentage(
+  assists: number | null | undefined,
+  teamFieldGoals: number | null | undefined,
+  playerFieldGoals: number | null | undefined,
+): NullableNumber {
+  if (!isFiniteNumber(assists) || !isFiniteNumber(teamFieldGoals) || !isFiniteNumber(playerFieldGoals)) {
+    return null;
+  }
+
+  return safeRatio(assists, teamFieldGoals - playerFieldGoals);
+}
+
+export function blockPercentage(
+  blocks: number | null | undefined,
+  oppFieldGoalAttempts: number | null | undefined,
+  oppThreePointAttempts: number | null | undefined,
+): NullableNumber {
+  if (!isFiniteNumber(blocks) || !isFiniteNumber(oppFieldGoalAttempts)) {
+    return null;
+  }
+
+  const opp2PA = isFiniteNumber(oppThreePointAttempts)
+    ? oppFieldGoalAttempts - oppThreePointAttempts
+    : oppFieldGoalAttempts;
+
+  return safeRatio(blocks, opp2PA);
+}
+
+export function stealPercentage(
+  steals: number | null | undefined,
+  oppFieldGoalAttempts: number | null | undefined,
+  oppFreeThrowAttempts: number | null | undefined,
+  oppOffensiveRebounds: number | null | undefined,
+  oppTurnovers: number | null | undefined,
+): NullableNumber {
+  if (!isFiniteNumber(steals)) {
+    return null;
+  }
+
+  const oppPossessions = estimatedPossessions({
+    fieldGoalAttempts: oppFieldGoalAttempts,
+    freeThrowAttempts: oppFreeThrowAttempts,
+    offensiveRebounds: oppOffensiveRebounds,
+    turnovers: oppTurnovers,
+  });
+
+  return safeRatio(steals, oppPossessions);
+}
+
+export function reboundPercentage(
+  playerRebounds: number | null | undefined,
+  teamRebounds: number | null | undefined,
+  oppRebounds: number | null | undefined,
+): NullableNumber {
+  if (!isFiniteNumber(playerRebounds) || !isFiniteNumber(teamRebounds) || !isFiniteNumber(oppRebounds)) {
+    return null;
+  }
+
+  return safeRatio(playerRebounds, teamRebounds + oppRebounds);
+}
+
+export function usageRate(
+  playerFieldGoalAttempts: number | null | undefined,
+  playerFreeThrowAttempts: number | null | undefined,
+  playerTurnovers: number | null | undefined,
+  teamFieldGoalAttempts: number | null | undefined,
+  teamFreeThrowAttempts: number | null | undefined,
+  teamTurnovers: number | null | undefined,
+): NullableNumber {
+  const playerUsage = trueShootingAttempts(playerFieldGoalAttempts, playerFreeThrowAttempts);
+  const teamUsage = trueShootingAttempts(teamFieldGoalAttempts, teamFreeThrowAttempts);
+
+  if (
+    !isFiniteNumber(playerUsage) ||
+    !isFiniteNumber(playerTurnovers) ||
+    !isFiniteNumber(teamUsage) ||
+    !isFiniteNumber(teamTurnovers)
+  ) {
+    return null;
+  }
+
+  return safeRatio(playerUsage + playerTurnovers, teamUsage + teamTurnovers);
+}
+
 export function estimatedPossessions(input: PossessionInput): NullableNumber {
   if (
     !isFiniteNumber(input.fieldGoalAttempts) ||
