@@ -20,6 +20,7 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - [x] (2026-06-05 05:17Z) Foundation scaffold files added: root Next/TypeScript/Tailwind/Vitest/ESLint configs, `components.json`, `.env.example`, app shell, shadcn-style base UI components, and an initial React render test.
 - [x] (2026-06-05 05:27Z) Foundation validation completed: `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` all exited 0; `npm run dev` served `http://localhost:3000` with HTTP 200 and rendered the title plus Overview and Players tabs.
 - [x] (2026-06-05 05:33Z) Added root `README.md` with install, environment setup, dev up, dev down, validation, and BBAPI smoke test instructions.
+- [x] (2026-06-05 05:43Z) Refactored `src\components\dashboard-tabs.tsx` so each tab panel's card content lives in its own component file before data wiring expands the UI.
 - [ ] Server boundary: implement credential loading, BBAPI session login/logout, cookie preservation, retry-on-`NotAuthorized`, XML parsing, typed BBAPI errors, and server-only logging rules.
 - [ ] Data normalization and cache: parse BBAPI XML into typed domain entities, cache raw and normalized data with the MVP TTLs, and expose server route handlers for dashboard data and manual refresh.
 - [ ] Metrics: implement pure metric functions with zero-denominator behavior returning `null`; attach MVP and conditional metrics to player, team, game, and season summaries.
@@ -688,3 +689,5 @@ Keep these names stable unless implementation reveals a concrete reason to renam
 2026-06-05 / Codex: Completed Milestone 1 foundation scaffold and validation; recorded npm audit note and Browser plugin startup blocker.
 
 2026-06-05 / Codex: Added a root README for installation, local development startup, shutdown, checks, and Phase 0 smoke testing.
+
+2026-06-05 / Codex: Split dashboard tab panel content into separate component files and revalidated with lint, typecheck, tests, and production build.
