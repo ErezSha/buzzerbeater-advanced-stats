@@ -80,6 +80,8 @@ export interface TeamGameStat {
   teamName?: string | null;
   isHome?: boolean | null;
   points?: number | null;
+  offStrategy: string | null;
+  defStrategy: string | null;
   fieldGoals?: number | null;
   fieldGoalAttempts?: number | null;
   threePointMakes?: number | null;

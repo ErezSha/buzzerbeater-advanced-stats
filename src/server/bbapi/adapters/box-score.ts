@@ -14,10 +14,18 @@ export function parseBoxScore(
 ): BoxScore {
   const match = childRecord(document.bbapi ?? null, "match");
   const matchId = requireString(match, fallbackMatchId, "id", "matchid");
-  const homeTeam = parseTeamGameStat(childRecord(match, "homeTeam"), matchId, true);
-  const awayTeam = parseTeamGameStat(childRecord(match, "awayTeam"), matchId, false);
-  const teamIds = new Set([homeTeam?.teamId, awayTeam?.teamId].filter(Boolean));
-  const players = collectPlayerRows(match, matchId, teamIds);
+  const homeTeam = parseTeamGameStat(
+    childRecord(match, "homeTeam"),
+    matchId,
+    true,
+  );
+  const awayTeam = parseTeamGameStat(
+    childRecord(match, "awayTeam"),
+    matchId,
+    false,
+  );
+  // const teamIds = new Set([homeTeam?.teamId, awayTeam?.teamId].filter(Boolean));
+  const players = collectPlayerRows(match, matchId);
 
   return {
     matchId,
@@ -36,26 +44,31 @@ function parseTeamGameStat(
     return null;
   }
 
+  const boxScore = childRecord(team, "boxscore");
+  const teamTotals = childRecord(boxScore, "teamTotals");
+
   return {
     matchId,
-    teamId: readString(team, "id", "teamid"),
+    teamId: readString(team, "id", "teamid", "shortName"),
     teamName: readString(team, "teamName", "name"),
+    offStrategy: readString(team, "offStrategy"),
+    defStrategy: readString(team, "defStrategy"),
     isHome,
-    points: readNumber(team, "pts", "score"),
-    fieldGoals: readNumber(team, "fgm"),
-    fieldGoalAttempts: readNumber(team, "fga"),
-    threePointMakes: readNumber(team, "tpm"),
-    threePointAttempts: readNumber(team, "tpa"),
-    freeThrows: readNumber(team, "ftm"),
-    freeThrowAttempts: readNumber(team, "fta"),
-    offensiveRebounds: readNumber(team, "oreb"),
-    defensiveRebounds: readNumber(team, "dreb"),
-    totalRebounds: readNumber(team, "reb"),
-    assists: readNumber(team, "ast"),
-    steals: readNumber(team, "stl"),
-    blocks: readNumber(team, "blk"),
-    turnovers: readNumber(team, "to", "tov"),
-    fouls: readNumber(team, "PF", "pf"),
+    points: readNumber(teamTotals, "pts"),
+    fieldGoals: readNumber(teamTotals, "fgm"),
+    fieldGoalAttempts: readNumber(teamTotals, "fga"),
+    threePointMakes: readNumber(teamTotals, "tpm"),
+    threePointAttempts: readNumber(teamTotals, "tpa"),
+    freeThrows: readNumber(teamTotals, "ftm"),
+    freeThrowAttempts: readNumber(teamTotals, "fta"),
+    offensiveRebounds: readNumber(teamTotals, "oreb"),
+    defensiveRebounds: readNumber(teamTotals, "dreb"),
+    totalRebounds: readNumber(teamTotals, "reb"),
+    assists: readNumber(teamTotals, "ast"),
+    steals: readNumber(teamTotals, "stl"),
+    blocks: readNumber(teamTotals, "blk"),
+    turnovers: readNumber(teamTotals, "to", "tov"),
+    fouls: readNumber(teamTotals, "PF", "pf"),
   };
 }
 
