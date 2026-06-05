@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bbapi version="1">
+  <schedule retrieved="2026-06-05" season="72" teamid="100">
+    <match id="9001" start="2026-06-01 18:00:00" type="league">
+      <homeTeam id="100"><teamName>Test Club</teamName></homeTeam>
+      <awayTeam id="200"><teamName>Opponent One</teamName></awayTeam>
+      <score>88</score>
+      <score>80</score>
+    </match>
+    <match id="9002" start="2026-06-08 18:00:00" type="league">
+      <homeTeam id="300"><teamName>Opponent Two</teamName></homeTeam>
+      <awayTeam id="100"><teamName>Test Club</teamName></awayTeam>
+    </match>
+  </schedule>
+</bbapi>

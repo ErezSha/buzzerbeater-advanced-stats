@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bbapi version="1">
+  <roster retrieved="2026-06-05" teamid="100">
+    <player id="501">
+      <firstName>Alex</firstName>
+      <lastName>Example</lastName>
+      <age>27</age>
+      <height>6-5</height>
+      <salary>12345</salary>
+      <bestPosition>SG</bestPosition>
+    </player>
+  </roster>
+</bbapi>

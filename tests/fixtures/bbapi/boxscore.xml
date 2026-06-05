@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bbapi version="1">
+  <match id="9001">
+    <homeTeam id="100">
+      <teamName>Test Club</teamName>
+      <player id="501">
+        <firstName>Alex</firstName>
+        <lastName>Example</lastName>
+        <min>36</min>
+        <fgm>8</fgm>
+        <fga>15</fga>
+        <tpm>3</tpm>
+        <tpa>7</tpa>
+        <ftm>4</ftm>
+        <fta>5</fta>
+        <oreb>2</oreb>
+        <reb>7</reb>
+        <ast>6</ast>
+        <stl>2</stl>
+        <blk>1</blk>
+        <to>3</to>
+        <PF>4</PF>
+        <pts>23</pts>
+      </player>
+    </homeTeam>
+    <awayTeam id="200">
+      <teamName>Opponent One</teamName>
+      <player id="701">
+        <firstName>Jamie</firstName>
+        <lastName>Sample</lastName>
+        <min>34</min>
+        <fgm>6</fgm>
+        <fga>14</fga>
+        <tpm>1</tpm>
+        <tpa>4</tpa>
+        <ftm>2</ftm>
+        <fta>2</fta>
+        <oreb>1</oreb>
+        <reb>5</reb>
+        <ast>4</ast>
+        <stl>1</stl>
+        <blk>0</blk>
+        <to>2</to>
+        <PF>3</PF>
+        <pts>15</pts>
+      </player>
+    </awayTeam>
+  </match>
+</bbapi>

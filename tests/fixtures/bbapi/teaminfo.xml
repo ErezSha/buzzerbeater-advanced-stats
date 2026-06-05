@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bbapi version="1">
+  <team id="100" retrieved="2026-06-05">
+    <teamName>Test Club</teamName>
+    <owner>Test Manager</owner>
+    <country id="1">Neverland</country>
+    <league id="22" level="3">III.1</league>
+  </team>
+</bbapi>

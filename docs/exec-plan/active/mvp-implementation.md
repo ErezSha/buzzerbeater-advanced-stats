@@ -22,7 +22,7 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - [x] (2026-06-05 05:33Z) Added root `README.md` with install, environment setup, dev up, dev down, validation, and BBAPI smoke test instructions.
 - [x] (2026-06-05 05:43Z) Refactored `src\components\dashboard-tabs.tsx` so each tab panel's card content lives in its own component file before data wiring expands the UI.
 - [x] (2026-06-05 06:00Z) Server boundary completed: added credential loading, BBAPI session login/logout, cookie preservation, retry-on-`NotAuthorized`, XML parsing, typed BBAPI errors, and secret-safe error messages with mocked request coverage.
-- [ ] Data normalization and cache: parse BBAPI XML into typed domain entities, cache raw and normalized data with the MVP TTLs, and expose server route handlers for dashboard data and manual refresh.
+- [x] (2026-06-05 17:31Z) Data normalization and cache completed: added typed domain entities, BBAPI XML adapters, redacted fixture parser tests, file-backed cache under `.cache\bbapi`, dashboard refresh/load orchestration, and route handlers for dashboard data, manual refresh, per-game box score lookup, and logout.
 - [ ] Metrics: implement pure metric functions with zero-denominator behavior returning `null`; attach MVP and conditional metrics to player, team, game, and season summaries.
 - [ ] UI: build the compact app shell, Overview, Players, Games, Trends, and Glossary views with tables, charts, filters, detail panels, loading states, empty states, and specific error messages.
 - [ ] Validation: add unit tests, fixture-based parser tests, build checks, and a manual smoke-test transcript using real credentials that are never committed or logged.
@@ -60,6 +60,8 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
   Evidence: The build output said Next.js added `.next/dev/types/**/*.ts` to `include`, and the checked-in `tsconfig.json` now contains that include entry.
 - Observation: TypeScript's `NodeJS.ProcessEnv` is best modeled with an index-signature interface when injecting test env objects.
   Evidence: `npm run typecheck` initially rejected `Pick<NodeJS.ProcessEnv, ...>` and `Partial<Record<...>>` defaults for `process.env`; `src\server\bbapi\config.ts` now uses an optional-key interface with `[key: string]: string | undefined`, and `npm run typecheck` exits 0.
+- Observation: `fast-xml-parser` represents plain repeated score nodes like `<score>88</score>` as string values, not records.
+  Evidence: The first schedule adapter test returned `null` for both score values until `src\server\bbapi\adapters\xml-utils.ts` added `childValues` and `readXmlNumber`; `npm run test -- bbapi-adapters dashboard-data` then passed.
 
 ## Decision Log
 
@@ -96,6 +98,12 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - Decision: Keep the BBAPI client fetch-injectable and store credentials/cookies in ECMAScript private fields.
   Rationale: Injecting `fetch` lets tests prove login retry and cookie behavior without network access or real credentials, while private fields keep the client object from serializing secrets or cookies into accidental browser-visible JSON.
   Date/Author: 2026-06-05 / Codex
+- Decision: Cache normalized dashboard data for 15 minutes, cache ordinary raw parsed endpoint documents for 15 minutes, and cache finished box score documents for 7 days.
+  Rationale: Team, roster, schedule, and team stat pages can change during a session, while finished box scores are stable enough to reuse much longer in a local MVP cache.
+  Date/Author: 2026-06-05 / Codex
+- Decision: Use redacted synthetic XML fixtures for adapter tests instead of persisting live BBAPI XML.
+  Rationale: The adapter behavior needs regression coverage, but live team names, player names, match ids, cookies, and credentials should stay out of git.
+  Date/Author: 2026-06-05 / Codex
 
 ## Outcomes & Retrospective
 
@@ -104,6 +112,8 @@ Current outcome: this active ExecPlan now describes how to implement and validat
 Milestone 1 outcome: the repository now has `package.json`, `package-lock.json`, Next.js 16, React 19, TypeScript, Tailwind CSS, ESLint, Vitest, a local `.env.example`, shadcn-style base components, and a static compact dashboard shell. Remaining gaps are BBAPI integration, data adapters, metric library, real dashboard data, cache, richer UI behavior, and final live smoke validation inside the app. Adapter work should start from the Phase 0 findings in Surprises & Discoveries, especially schedule score child elements, teamstats averages fields, and mixed-case box score stat names.
 
 Milestone 2 outcome: `src\server\bbapi` now contains typed config, endpoint URL construction, XML parsing and BBAPI error detection, typed application errors, and a session client that logs in, stores cookies internally, logs out, and retries exactly once after `NotAuthorized`. `tests\bbapi-client.test.ts` and `tests\fixtures\bbapi\error-not-authorized.xml` validate the boundary with mocked responses only. Remaining gaps are the Milestone 3 adapters, cache, orchestration, and route handlers that will consume this server client.
+
+Milestone 3 outcome: `src\domain\types.ts` defines the MVP team, player, match, season stat, game stat, team game stat, box score, and normalized dashboard entities. `src\server\bbapi\adapters` parses `teaminfo.aspx`, `roster.aspx`, `schedule.aspx`, `teamstats.aspx`, and `boxscore.aspx` documents into those entities, including schedule score child nodes and mixed-case player stat fields such as `PF`. `src\server\cache` provides the file-backed `.cache\bbapi` cache, and `src\server\data` now loads from normalized cache or refreshes BBAPI pages and finished box scores before logging out. Route handlers exist at `/api/dashboard`, `/api/refresh`, `/api/games/[matchId]`, and `/api/logout`. Remaining gaps are metric derivation, UI data consumption, richer error-state tests, and live app smoke validation through the new routes.
 
 Update this section at every meaningful stopping point. At completion, summarize what works in the running app, which acceptance criteria were verified, which BBAPI data limitations remain, and which items should move into post-MVP work.
 
@@ -593,6 +603,27 @@ Milestone 2 mocked behavior evidence:
 
     tests\bbapi-client.test.ts validates that public config status omits credential values, missing server credentials throw `ConfigurationError` without echoing the provided secret, BBAPI `<error message="NotAuthorized" />` XML throws a typed `BbapiError`, login cookies are sent on later page requests, `NotAuthorized` causes exactly one fresh login and one retry, and HTTP failure messages do not include `BB_SECURITY_CODE`.
 
+Milestone 3 validation on 2026-06-05:
+
+    npm run test -- bbapi-adapters dashboard-data
+    Expected and observed: 2 test files passed, 7 tests passed.
+
+    npm run lint
+    Expected and observed: exited 0 with no warnings after removing one unused type import.
+
+    npm run typecheck
+    Expected and observed: exited 0.
+
+    npm run test
+    Expected and observed: 4 test files passed, 16 tests passed.
+
+    npm run build
+    Expected and observed: exited 0; dynamic server routes were produced for `/api/dashboard`, `/api/games/[matchId]`, `/api/logout`, and `/api/refresh`.
+
+Milestone 3 mocked behavior evidence:
+
+    tests\bbapi-adapters.test.ts validates redacted `teaminfo`, `roster`, `schedule`, `teamstats`, and `boxscore` XML adapters, including plain score child nodes and mixed-case `PF` foul tags. `tests\dashboard-data.test.ts` validates that fresh normalized cache avoids BBAPI calls and that refresh fetches the core pages plus one finished box score, writes normalized cache, and logs out.
+
 ## Interfaces and Dependencies
 
 Runtime dependencies expected by the MVP:
@@ -721,3 +752,5 @@ Keep these names stable unless implementation reveals a concrete reason to renam
 2026-06-05 / Codex: Split dashboard tab panel content into separate component files and revalidated with lint, typecheck, tests, and production build.
 
 2026-06-05 / Codex: Completed Milestone 2 server BBAPI client boundary with config loading, endpoint helpers, XML/error parsing, private session cookies, one `NotAuthorized` relogin retry, mocked tests, and full validation.
+
+2026-06-05 / Codex: Completed Milestone 3 data normalization, local cache, dashboard orchestration, API route handlers, redacted adapter fixtures, mocked orchestration tests, and full validation.
