@@ -27,7 +27,10 @@ export function AppShell() {
         <header className="flex flex-col gap-3 border-b pb-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+              <ShieldCheck
+                className="h-4 w-4 text-primary"
+                aria-hidden="true"
+              />
               Private BBAPI dashboard
             </div>
             <h1 className="mt-1 text-2xl font-semibold tracking-normal">
@@ -50,7 +53,9 @@ export function AppShell() {
               onClick={() => void dashboard.refresh()}
             >
               <RefreshCw
-                className={dashboard.isRefreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"}
+                className={
+                  dashboard.isRefreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"
+                }
                 aria-hidden="true"
               />
               Refresh
@@ -60,10 +65,15 @@ export function AppShell() {
 
         {dashboard.error ? (
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+            <AlertTriangle
+              className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+              aria-hidden="true"
+            />
             <div>
               <div className="font-medium">{dashboard.error.code}</div>
-              <div className="text-muted-foreground">{dashboard.error.message}</div>
+              <div className="text-muted-foreground">
+                {dashboard.error.message}
+              </div>
             </div>
           </div>
         ) : null}
@@ -76,7 +86,11 @@ export function AppShell() {
                   Team
                 </div>
                 <div className="mt-1 font-semibold">
-                  {dashboard.isLoading ? <Skeleton className="h-5 w-40" /> : team?.name ?? "Awaiting BBAPI data"}
+                  {dashboard.isLoading ? (
+                    <Skeleton className="h-5 w-40" />
+                  ) : (
+                    (team?.name ?? "Awaiting BBAPI data")
+                  )}
                 </div>
               </div>
               <div>
@@ -90,7 +104,9 @@ export function AppShell() {
                   Last Updated
                 </div>
                 <div className="mt-1 font-semibold">
-                  {formatDateTime(dashboard.refreshedAt ?? dashboard.data?.refreshedAt)}
+                  {formatDateTime(
+                    dashboard.refreshedAt ?? dashboard.data?.refreshedAt,
+                  )}
                 </div>
               </div>
             </div>

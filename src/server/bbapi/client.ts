@@ -27,10 +27,7 @@ export interface BbapiClient {
   ): Promise<BbapiXmlDocument>;
 }
 
-export type BbapiFetch = (
-  input: URL,
-  init?: RequestInit,
-) => Promise<Response>;
+export type BbapiFetch = (input: URL, init?: RequestInit) => Promise<Response>;
 
 export interface CreateBbapiClientOptions {
   readonly config?: BbapiConfig;
@@ -50,6 +47,7 @@ class DefaultBbapiClient implements BbapiClient {
   #cookieHeader: string | null = null;
   #fetcher: BbapiFetch;
   #loggedIn = false;
+  #loginPromise: Promise<void> | null = null;
 
   constructor(options: CreateBbapiClientOptions) {
     this.#baseUrl = options.baseUrl ?? BBAPI_BASE_URL;
@@ -58,6 +56,21 @@ class DefaultBbapiClient implements BbapiClient {
   }
 
   async login(): Promise<void> {
+    if (this.#loginPromise) {
+      await this.#loginPromise;
+      return;
+    }
+
+    this.#loginPromise = this.#performLogin();
+
+    try {
+      await this.#loginPromise;
+    } finally {
+      this.#loginPromise = null;
+    }
+  }
+
+  async #performLogin(): Promise<void> {
     const params: BbapiRequestParams = {
       login: this.#config.login,
       code: this.#config.securityCode,
@@ -98,6 +111,7 @@ class DefaultBbapiClient implements BbapiClient {
 
       this.#cookieHeader = null;
       this.#loggedIn = false;
+      this.#loginPromise = null;
       await this.login();
       return this.#request(endpoint, params);
     }
@@ -209,7 +223,10 @@ function mergeCookieHeader(
     const separatorIndex = pair?.indexOf("=") ?? -1;
 
     if (pair && separatorIndex > 0) {
-      cookiePairs.set(pair.slice(0, separatorIndex), pair.slice(separatorIndex + 1));
+      cookiePairs.set(
+        pair.slice(0, separatorIndex),
+        pair.slice(separatorIndex + 1),
+      );
     }
   }
 

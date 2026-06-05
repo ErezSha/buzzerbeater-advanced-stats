@@ -18,9 +18,9 @@ interface DashboardDataState {
   refresh: () => Promise<void>;
 }
 
-async function readResponse<T extends DashboardApiResponse | RefreshApiResponse>(
-  response: Response,
-): Promise<T> {
+async function readResponse<
+  T extends DashboardApiResponse | RefreshApiResponse,
+>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
@@ -29,7 +29,7 @@ export function useDashboardData(): DashboardDataState {
   const [error, setError] = React.useState<DashboardDataState["error"]>(null);
   const [refreshedAt, setRefreshedAt] = React.useState<string | null>(null);
   const [cacheSource, setCacheSource] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const applyResponse = React.useCallback((payload: DashboardApiResponse) => {

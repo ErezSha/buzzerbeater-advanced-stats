@@ -78,7 +78,13 @@ describe("BBAPI endpoints and XML errors", () => {
 
   it("turns BBAPI error XML fixtures into typed application errors", () => {
     const xml = readFileSync(
-      join(process.cwd(), "tests", "fixtures", "bbapi", "error-not-authorized.xml"),
+      join(
+        process.cwd(),
+        "tests",
+        "fixtures",
+        "bbapi",
+        "error-not-authorized.xml",
+      ),
       "utf8",
     );
     const document = parseBbapiXml(xml, "teaminfo.aspx");
@@ -103,7 +109,8 @@ describe("BBAPI client sessions", () => {
   it("keeps credentials and cookies inside non-serializable private fields", () => {
     const client = createBbapiClient({
       config,
-      fetcher: async () => xmlResponse("<bbapi version=\"1\"><loggedIn /></bbapi>"),
+      fetcher: async () =>
+        xmlResponse('<bbapi version="1"><loggedIn /></bbapi>'),
     });
 
     expect(Object.keys(client)).toEqual([]);
@@ -118,18 +125,49 @@ describe("BBAPI client sessions", () => {
 
       if (url.pathname.endsWith("/login.aspx")) {
         return xmlResponse(
-          "<bbapi version=\"1\"><loggedIn /></bbapi>",
+          '<bbapi version="1"><loggedIn /></bbapi>',
           "BBSESSION=first; Path=/; HttpOnly",
         );
       }
 
-      return xmlResponse("<bbapi version=\"1\"><team id=\"1\" /></bbapi>");
+      return xmlResponse('<bbapi version="1"><team id="1" /></bbapi>');
     };
     const client = createBbapiClient({ config, fetcher });
 
     await client.requestPage("teaminfo.aspx");
 
     expect(seenCookieHeaders).toEqual([null, "BBSESSION=first"]);
+  });
+
+  it("coalesces concurrent page requests into one login session", async () => {
+    let loginCount = 0;
+    const pageCookies: Array<string | null> = [];
+    const fetcher: BbapiFetch = async (url, init) => {
+      if (url.pathname.endsWith("/login.aspx")) {
+        loginCount += 1;
+        return xmlResponse(
+          '<bbapi version="1"><loggedIn /></bbapi>',
+          "BBSESSION=shared; Path=/; HttpOnly",
+        );
+      }
+
+      pageCookies.push(new Headers(init?.headers).get("Cookie"));
+      return xmlResponse('<bbapi version="1"><ok /></bbapi>');
+    };
+    const client = createBbapiClient({ config, fetcher });
+
+    await Promise.all([
+      client.requestPage("teaminfo.aspx"),
+      client.requestPage("roster.aspx"),
+      client.requestPage("schedule.aspx"),
+    ]);
+
+    expect(loginCount).toBe(1);
+    expect(pageCookies).toEqual([
+      "BBSESSION=shared",
+      "BBSESSION=shared",
+      "BBSESSION=shared",
+    ]);
   });
 
   it("retries exactly once with a fresh login when a page returns NotAuthorized", async () => {
@@ -140,7 +178,7 @@ describe("BBAPI client sessions", () => {
       if (url.pathname.endsWith("/login.aspx")) {
         loginCount += 1;
         return xmlResponse(
-          "<bbapi version=\"1\"><loggedIn /></bbapi>",
+          '<bbapi version="1"><loggedIn /></bbapi>',
           `BBSESSION=session-${loginCount}; Path=/; HttpOnly`,
         );
       }
@@ -151,11 +189,11 @@ describe("BBAPI client sessions", () => {
 
         if (teamInfoCount === 1) {
           return xmlResponse(
-            "<bbapi version=\"1\"><error message=\"NotAuthorized\" /></bbapi>",
+            '<bbapi version="1"><error message="NotAuthorized" /></bbapi>',
           );
         }
 
-        return xmlResponse("<bbapi version=\"1\"><team id=\"1\" /></bbapi>");
+        return xmlResponse('<bbapi version="1"><team id="1" /></bbapi>');
       }
 
       throw new Error(`Unexpected endpoint: ${url.pathname}`);
@@ -174,7 +212,7 @@ describe("BBAPI client sessions", () => {
 
   it("does not leak the security code in HTTP failure messages", async () => {
     const fetcher: BbapiFetch = async () =>
-      xmlResponse("<bbapi version=\"1\" />", undefined, 500);
+      xmlResponse('<bbapi version="1" />', undefined, 500);
     const client = createBbapiClient({ config, fetcher });
 
     await expect(client.login()).rejects.toMatchObject({
@@ -186,11 +224,7 @@ describe("BBAPI client sessions", () => {
   });
 });
 
-function xmlResponse(
-  body: string,
-  setCookie?: string,
-  status = 200,
-): Response {
+function xmlResponse(body: string, setCookie?: string, status = 200): Response {
   const headers = new Headers({ "content-type": "application/xml" });
 
   if (setCookie) {

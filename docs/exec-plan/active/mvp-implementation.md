@@ -27,6 +27,8 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - [x] (2026-06-05 19:28Z) UI milestone started: replacing the static shell with client-side dashboard loading, manual refresh, populated Overview, Players, Games, Trends, and Glossary views, and UI behavior tests.
 - [x] (2026-06-05 19:32Z) UI completed: wired `/api/dashboard` and `/api/refresh` into the app shell, added loading/error/refresh states, populated Overview, Players, Games, Trends, and Glossary views, and added focused UI tests for player filters, game detail/unavailable states, and specific authorization errors.
 - [x] UI: build the compact app shell, Overview, Players, Games, Trends, and Glossary views with tables, charts, filters, detail panels, loading states, empty states, and specific error messages.
+- [x] (2026-06-05 20:13Z) Made the use fix their existing `.env.local` to canonical `BB_LOGIN` and `BB_SECURITY_CODE`.
+- [x] (2026-06-05 20:32Z) Fixed a likely app-only `NotAuthorized` path by coalescing concurrent BBAPI client login attempts into a single shared session promise; added regression coverage for concurrent page requests sharing one login cookie.
 - [ ] Validation: add unit tests, fixture-based parser tests, build checks, and a manual smoke-test transcript using real credentials that are never committed or logged.
 - [ ] Retrospective: update this ExecPlan with final outcomes, gaps, and any post-MVP follow-ups discovered during implementation.
 
@@ -68,6 +70,8 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
   Evidence: `src\domain\derive-team-stats.ts` sums player stat rows for the user's team and opponent when available, falling back to explicit team stat nodes only when player totals are absent; `tests\dashboard-metrics.test.ts` validates ORtg, possessions, margin, and team summary from fixture player rows.
 - Observation: The React hooks lint rule warns on TanStack Table's `useReactTable` helper because the library returns stateful table functions.
   Evidence: `npm run lint` initially emitted `react-hooks/incompatible-library` for `src\components\dashboard-tabs\players-tab-content.tsx`; the final implementation keeps the required TanStack Table usage and documents a narrow one-line eslint suppression directly above `useReactTable`.
+- Observation: The dashboard can hit `NotAuthorized` even when the redacted smoke script previously authenticated successfully.
+  Evidence: The app refresh path can request multiple BBAPI pages through one client, while `scripts\bbapi-smoke.ps1` requests pages serially after one login; before the fix, concurrent `requestPage` calls could each start their own login and race session cookies.
 
 ## Decision Log
 
@@ -92,9 +96,6 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - Decision: Add Phase 0 as a checked-in PowerShell smoke script at `scripts\bbapi-smoke.ps1`, but do not write or commit raw BBAPI XML.
   Rationale: A tiny live discovery run de-risks adapter work while preserving the project's credential and privacy boundary.
   Date/Author: 2026-06-04 / Codex
-- Decision: Let the Phase 0 smoke script accept local legacy aliases `BB_LOGIN_NAME` and `BB_ACCESS_KEY`, while the application implementation should still prefer `BB_LOGIN` and `BB_SECURITY_CODE`.
-  Rationale: This lets discovery run immediately with the user's existing env file without weakening the PRD's server-side credential contract for the app.
-  Date/Author: 2026-06-04 / Codex
 - Decision: Scaffold shadcn-style local UI components manually instead of running the interactive shadcn CLI during Milestone 1.
   Rationale: The repo was docs-only, and a small checked-in base set (`Button`, `Card`, `Tabs`, `Table`, `Badge`, `Skeleton`) was enough to validate the foundation while avoiding generator churn before the app architecture exists.
   Date/Author: 2026-06-05 / Codex
@@ -118,6 +119,12 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
   Date/Author: 2026-06-05 / Codex
 - Decision: Keep dashboard data fetching in a client-side app shell for the MVP rather than converting the page to an async server-rendered dashboard.
   Rationale: The UI needs manual refresh state, loading and specific error messages, and tab-local interactions while route handlers still preserve the server-side BBAPI credential boundary.
+  Date/Author: 2026-06-05 / Codex
+- Decision: Accept `BB_LOGIN_NAME` and `BB_ACCESS_KEY` as server-side fallback aliases while continuing to document `BB_LOGIN` and `BB_SECURITY_CODE` as the canonical MVP names.
+  Rationale: This preserves the PRD naming while allowing the existing local environment to run without copying secrets or weakening the server-only credential boundary.
+  Date/Author: 2026-06-05 / Codex
+- Decision: Coalesce concurrent BBAPI client logins with an internal `#loginPromise`.
+  Rationale: BBAPI sessions are cookie-based, and multiple overlapping login requests from one client can invalidate or overwrite cookies before the dependent page requests complete.
   Date/Author: 2026-06-05 / Codex
 
 ## Outcomes & Retrospective
@@ -685,6 +692,24 @@ Milestone 5 mocked behavior evidence:
 
     `tests\app-shell.test.tsx` validates that the shell renders API-loaded team data without browser credentials. `tests\players-view.test.tsx` validates active-roster and minimum-games filtering in the TanStack table. `tests\games-view.test.tsx` validates finished game detail rendering and scheduled match box score availability messaging. `tests\error-states.test.tsx` validates a specific `NotAuthorized` message from the dashboard API.
 
+Credential alias fix validation on 2026-06-05:
+
+    npm run test -- bbapi-client error-states
+    Expected and observed: 2 test files passed, 10 tests passed.
+
+    npm run typecheck
+    Expected and observed: exited 0.
+
+    npm run lint
+    Expected and observed: exited 0.
+
+    npm run build
+    Expected and observed: exited 0; production build completed with `.env.local` present.
+
+Concurrent login fix note on 2026-06-05:
+
+    Added `tests\bbapi-client.test.ts` coverage for three concurrent page requests sharing one login and one cookie. Automated validation could not be run in this turn because the normal Windows sandbox failed with `CreateProcessAsUserW failed: 5`, and the approval system blocked escalated command execution.
+
 ## Interfaces and Dependencies
 
 Runtime dependencies expected by the MVP:
@@ -819,3 +844,7 @@ Keep these names stable unless implementation reveals a concrete reason to renam
 2026-06-05 / Codex: Completed Milestone 4 metric formulas, dashboard metric aggregation, trend and alert derivation, derived API payload wiring, metric tests, aggregation tests, and full validation.
 
 2026-06-05 / Codex: Completed Milestone 5 UI implementation with client dashboard loading/refresh, populated tab views, searchable glossary, Recharts trends, TanStack player table filters, game detail states, UI tests, and automated validation.
+
+2026-06-05 / Codex: Fixed BBAPI configuration fallback aliases so an existing `.env.local` with `BB_LOGIN_NAME` and `BB_ACCESS_KEY` can run the app while canonical docs remain `BB_LOGIN` and `BB_SECURITY_CODE`.
+
+2026-06-05 / Codex: Coalesced concurrent BBAPI client login attempts to avoid racing cookie sessions during dashboard refresh, and added a mocked concurrency regression test.
