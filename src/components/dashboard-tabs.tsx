@@ -7,8 +7,14 @@ import { OverviewTabContent } from "@/components/dashboard-tabs/overview-tab-con
 import { PlayersTabContent } from "@/components/dashboard-tabs/players-tab-content";
 import { TrendsTabContent } from "@/components/dashboard-tabs/trends-tab-content";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { DashboardViewModel } from "@/lib/api-types";
 
-export function DashboardTabs() {
+interface DashboardTabsProps {
+  data: DashboardViewModel | null;
+  isLoading: boolean;
+}
+
+export function DashboardTabs({ data, isLoading }: DashboardTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full">
       <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-5">
@@ -35,19 +41,19 @@ export function DashboardTabs() {
       </TabsList>
 
       <TabsContent value="overview">
-        <OverviewTabContent />
+        <OverviewTabContent data={data} isLoading={isLoading} />
       </TabsContent>
 
       <TabsContent value="players">
-        <PlayersTabContent />
+        <PlayersTabContent data={data} isLoading={isLoading} />
       </TabsContent>
 
       <TabsContent value="games">
-        <GamesTabContent />
+        <GamesTabContent data={data} isLoading={isLoading} />
       </TabsContent>
 
       <TabsContent value="trends">
-        <TrendsTabContent />
+        <TrendsTabContent data={data} isLoading={isLoading} />
       </TabsContent>
 
       <TabsContent value="glossary">

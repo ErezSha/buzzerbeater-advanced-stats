@@ -1,0 +1,101 @@
+export interface GlossaryEntry {
+  id: string;
+  name: string;
+  formula: string;
+  interpretation: string;
+  availability: string;
+}
+
+export const glossaryEntries: GlossaryEntry[] = [
+  {
+    id: "fg",
+    name: "FG%",
+    formula: "Field goals made / field goal attempts",
+    interpretation: "Basic shooting accuracy across all field goal attempts.",
+    availability: "Shown when makes and attempts are available.",
+  },
+  {
+    id: "two-point",
+    name: "2P%",
+    formula: "Two-point makes / two-point attempts",
+    interpretation: "Accuracy inside the arc, separated from three-point shooting.",
+    availability: "Shown when the box score exposes two-point attempts or enough data to derive them.",
+  },
+  {
+    id: "three-point",
+    name: "3P%",
+    formula: "Three-point makes / three-point attempts",
+    interpretation: "Accuracy on three-point shots.",
+    availability: "Shown when three-point makes and attempts are available.",
+  },
+  {
+    id: "ft",
+    name: "FT%",
+    formula: "Free throws made / free throw attempts",
+    interpretation: "Accuracy at the free throw line.",
+    availability: "Shown when free throw attempts are greater than zero.",
+  },
+  {
+    id: "efg",
+    name: "eFG%",
+    formula: "(FGM + 0.5 * 3PM) / FGA",
+    interpretation: "Shooting efficiency that gives extra credit for made threes.",
+    availability: "Shown when field goal attempts are available.",
+  },
+  {
+    id: "tsa",
+    name: "TSA",
+    formula: "FGA + 0.44 * FTA",
+    interpretation: "Estimated shooting possessions used by field goal and free throw attempts.",
+    availability: "Shown when field goal attempts and free throw attempts are available.",
+  },
+  {
+    id: "ts",
+    name: "TS%",
+    formula: "PTS / (2 * TSA)",
+    interpretation: "Scoring efficiency that accounts for twos, threes, and free throws.",
+    availability: "Shown when points and shooting attempts are available.",
+  },
+  {
+    id: "tov",
+    name: "TOV%",
+    formula: "TOV / (FGA + 0.44 * FTA + TOV)",
+    interpretation: "Share of scoring possessions that ended in a turnover.",
+    availability: "Shown when shot attempts, free throw attempts, and turnovers are available.",
+  },
+  {
+    id: "game-score",
+    name: "Game Score",
+    formula: "Dean Oliver box-score summary using points, shots, rebounds, assists, steals, blocks, fouls, and turnovers",
+    interpretation: "A quick single-game estimate of player box-score impact.",
+    availability: "Shown when player box score rows include the required counting stats.",
+  },
+  {
+    id: "possessions",
+    name: "Estimated Possessions",
+    formula: "FGA - ORB + TOV + 0.44 * FTA",
+    interpretation: "Approximate number of offensive possessions in a game.",
+    availability: "Shown when team shooting, offensive rebound, turnover, and free throw data exists.",
+  },
+  {
+    id: "ortg",
+    name: "ORtg",
+    formula: "100 * points / possessions",
+    interpretation: "Points scored per 100 estimated possessions.",
+    availability: "Shown for finished games with reliable possession estimates.",
+  },
+  {
+    id: "drtg",
+    name: "DRtg",
+    formula: "100 * opponent points / possessions",
+    interpretation: "Points allowed per 100 estimated possessions.",
+    availability: "Shown for finished games with reliable possession estimates.",
+  },
+  {
+    id: "pace",
+    name: "Pace",
+    formula: "Estimated possessions for the team game",
+    interpretation: "How many possessions the game created for comparison across matchups.",
+    availability: "Shown when estimated possessions can be calculated.",
+  },
+];

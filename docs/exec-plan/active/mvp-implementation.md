@@ -24,7 +24,9 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - [x] (2026-06-05 06:00Z) Server boundary completed: added credential loading, BBAPI session login/logout, cookie preservation, retry-on-`NotAuthorized`, XML parsing, typed BBAPI errors, and secret-safe error messages with mocked request coverage.
 - [x] (2026-06-05 17:31Z) Data normalization and cache completed: added typed domain entities, BBAPI XML adapters, redacted fixture parser tests, file-backed cache under `.cache\bbapi`, dashboard refresh/load orchestration, and route handlers for dashboard data, manual refresh, per-game box score lookup, and logout.
 - [x] (2026-06-05 18:13Z) Metrics completed: added pure MVP metric formulas, player/game/team/trend derivation, low-sample and turnover pattern alerts, dashboard payload `derived` metrics, and unit tests for normal inputs, missing inputs, and zero-denominator behavior.
-- [ ] UI: build the compact app shell, Overview, Players, Games, Trends, and Glossary views with tables, charts, filters, detail panels, loading states, empty states, and specific error messages.
+- [x] (2026-06-05 19:28Z) UI milestone started: replacing the static shell with client-side dashboard loading, manual refresh, populated Overview, Players, Games, Trends, and Glossary views, and UI behavior tests.
+- [x] (2026-06-05 19:32Z) UI completed: wired `/api/dashboard` and `/api/refresh` into the app shell, added loading/error/refresh states, populated Overview, Players, Games, Trends, and Glossary views, and added focused UI tests for player filters, game detail/unavailable states, and specific authorization errors.
+- [x] UI: build the compact app shell, Overview, Players, Games, Trends, and Glossary views with tables, charts, filters, detail panels, loading states, empty states, and specific error messages.
 - [ ] Validation: add unit tests, fixture-based parser tests, build checks, and a manual smoke-test transcript using real credentials that are never committed or logged.
 - [ ] Retrospective: update this ExecPlan with final outcomes, gaps, and any post-MVP follow-ups discovered during implementation.
 
@@ -64,6 +66,8 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
   Evidence: The first schedule adapter test returned `null` for both score values until `src\server\bbapi\adapters\xml-utils.ts` added `childValues` and `readXmlNumber`; `npm run test -- bbapi-adapters dashboard-data` then passed.
 - Observation: Current box score fixtures and live discovery emphasize player rows more than reliable team-total rows, so team game metrics should be derivable from player totals.
   Evidence: `src\domain\derive-team-stats.ts` sums player stat rows for the user's team and opponent when available, falling back to explicit team stat nodes only when player totals are absent; `tests\dashboard-metrics.test.ts` validates ORtg, possessions, margin, and team summary from fixture player rows.
+- Observation: The React hooks lint rule warns on TanStack Table's `useReactTable` helper because the library returns stateful table functions.
+  Evidence: `npm run lint` initially emitted `react-hooks/incompatible-library` for `src\components\dashboard-tabs\players-tab-content.tsx`; the final implementation keeps the required TanStack Table usage and documents a narrow one-line eslint suppression directly above `useReactTable`.
 
 ## Decision Log
 
@@ -112,6 +116,9 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - Decision: Season-level percentage and factor summaries are averages of available game-level metrics for now.
   Rationale: This keeps null handling honest when some box score fields are unavailable, while still giving the UI a stable summary; exact weighted season factors can be revisited if live team-total fields prove complete.
   Date/Author: 2026-06-05 / Codex
+- Decision: Keep dashboard data fetching in a client-side app shell for the MVP rather than converting the page to an async server-rendered dashboard.
+  Rationale: The UI needs manual refresh state, loading and specific error messages, and tab-local interactions while route handlers still preserve the server-side BBAPI credential boundary.
+  Date/Author: 2026-06-05 / Codex
 
 ## Outcomes & Retrospective
 
@@ -124,6 +131,8 @@ Milestone 2 outcome: `src\server\bbapi` now contains typed config, endpoint URL 
 Milestone 3 outcome: `src\domain\types.ts` defines the MVP team, player, match, season stat, game stat, team game stat, box score, and normalized dashboard entities. `src\server\bbapi\adapters` parses `teaminfo.aspx`, `roster.aspx`, `schedule.aspx`, `teamstats.aspx`, and `boxscore.aspx` documents into those entities, including schedule score child nodes and mixed-case player stat fields such as `PF`. `src\server\cache` provides the file-backed `.cache\bbapi` cache, and `src\server\data` now loads from normalized cache or refreshes BBAPI pages and finished box scores before logging out. Route handlers exist at `/api/dashboard`, `/api/refresh`, `/api/games/[matchId]`, and `/api/logout`. Remaining gaps are metric derivation, UI data consumption, richer error-state tests, and live app smoke validation through the new routes.
 
 Milestone 4 outcome: `src\domain\metrics.ts` now implements safe ratio handling plus FG%, 2P%, 3P%, FT%, eFG%, TSA, TS%, TOV%, Game Score, estimated possessions, ORtg, and DRtg, returning `null` for zero denominators and missing inputs. `src\domain\aggregate.ts`, `derive-player-stats.ts`, `derive-team-stats.ts`, and `derive-trends.ts` attach UI-ready `derived` summaries to every refreshed dashboard payload, including player advanced summaries, team game metrics, season summaries, trend points, rolling averages when sample size allows, and low-sample/turnover alerts. Remaining gaps are UI rendering of these metrics, glossary content for implemented formulas, UI behavior tests, and live route smoke validation.
+
+Milestone 5 outcome: `src\components\app-shell.tsx` now fetches dashboard data from `/api/dashboard`, supports manual refresh through `/api/refresh`, and renders loading, cache, refresh, and specific API error states without exposing BBAPI credentials. Overview shows record, team efficiency, alerts, top players, and recent form. Players uses TanStack Table sorting plus active-roster, minimum-games, and minimum-minutes filters. Games shows finished game rows, selected game details, four-factor summaries, and scheduled/unavailable box score messaging. Trends uses Recharts for team game trends and rolling average availability states. Glossary is searchable and sourced from `src\domain\glossary.ts`. Remaining gaps are final live app smoke validation with real credentials, browser-level secret leakage inspection, and the final retrospective.
 
 Update this section at every meaningful stopping point. At completion, summarize what works in the running app, which acceptance criteria were verified, which BBAPI data limitations remain, and which items should move into post-MVP work.
 
@@ -655,6 +664,27 @@ Milestone 4 mocked behavior evidence:
 
     tests\metrics.test.ts covers every MVP formula for normal inputs, missing inputs, and zero-denominator behavior. `tests\dashboard-metrics.test.ts` validates player summaries, Game Score, team possessions, ORtg, margin, season record, trends, and low-sample alerts from redacted fixtures. `tests\dashboard-data.test.ts` validates that refreshed dashboard data now includes derived player and game metrics.
 
+Milestone 5 validation on 2026-06-05:
+
+    npm run typecheck
+    Expected and observed: exited 0.
+
+    npm run lint
+    Expected and observed: exited 0.
+
+    npm run test -- players-view games-view error-states app-shell
+    Expected and observed: 4 test files passed, 4 tests passed.
+
+    npm run test
+    Expected and observed: 9 test files passed, 24 tests passed.
+
+    npm run build
+    Expected and observed: exited 0; routes remained `/`, `/api/dashboard`, `/api/games/[matchId]`, `/api/logout`, and `/api/refresh`.
+
+Milestone 5 mocked behavior evidence:
+
+    `tests\app-shell.test.tsx` validates that the shell renders API-loaded team data without browser credentials. `tests\players-view.test.tsx` validates active-roster and minimum-games filtering in the TanStack table. `tests\games-view.test.tsx` validates finished game detail rendering and scheduled match box score availability messaging. `tests\error-states.test.tsx` validates a specific `NotAuthorized` message from the dashboard API.
+
 ## Interfaces and Dependencies
 
 Runtime dependencies expected by the MVP:
@@ -787,3 +817,5 @@ Keep these names stable unless implementation reveals a concrete reason to renam
 2026-06-05 / Codex: Completed Milestone 3 data normalization, local cache, dashboard orchestration, API route handlers, redacted adapter fixtures, mocked orchestration tests, and full validation.
 
 2026-06-05 / Codex: Completed Milestone 4 metric formulas, dashboard metric aggregation, trend and alert derivation, derived API payload wiring, metric tests, aggregation tests, and full validation.
+
+2026-06-05 / Codex: Completed Milestone 5 UI implementation with client dashboard loading/refresh, populated tab views, searchable glossary, Recharts trends, TanStack player table filters, game detail states, UI tests, and automated validation.
