@@ -16,7 +16,10 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 
 - [x] (2026-06-04 20:18Z) Read `PLANS.md`, `docs/prd/prd-mvp.md`, `docs/references/buzzerbeater-api.md`, and `docs/references/glossary.md`; confirmed `docs/exec-plan/active` was empty before creating this active MVP plan.
 - [x] (2026-06-04 20:31Z) Phase 0: ran a redacted BBAPI discovery smoke test against live credentials; login captured a cookie, core endpoints returned HTTP 200, one finished-match box score was discovered, and logout returned HTTP 200.
-- [ ] Foundation: scaffold the Next.js + TypeScript application, Tailwind CSS, shadcn/ui base components, linting, tests, and local environment file example.
+- [x] (2026-06-05 05:15Z) Foundation started: scaffold the Next.js + TypeScript application, Tailwind CSS, shadcn/ui base components, linting, tests, and local environment file example.
+- [x] (2026-06-05 05:17Z) Foundation scaffold files added: root Next/TypeScript/Tailwind/Vitest/ESLint configs, `components.json`, `.env.example`, app shell, shadcn-style base UI components, and an initial React render test.
+- [x] (2026-06-05 05:27Z) Foundation validation completed: `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` all exited 0; `npm run dev` served `http://localhost:3000` with HTTP 200 and rendered the title plus Overview and Players tabs.
+- [x] (2026-06-05 05:33Z) Added root `README.md` with install, environment setup, dev up, dev down, validation, and BBAPI smoke test instructions.
 - [ ] Server boundary: implement credential loading, BBAPI session login/logout, cookie preservation, retry-on-`NotAuthorized`, XML parsing, typed BBAPI errors, and server-only logging rules.
 - [ ] Data normalization and cache: parse BBAPI XML into typed domain entities, cache raw and normalized data with the MVP TTLs, and expose server route handlers for dashboard data and manual refresh.
 - [ ] Metrics: implement pure metric functions with zero-denominator behavior returning `null`; attach MVP and conditional metrics to player, team, game, and season summaries.
@@ -48,6 +51,12 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
   Evidence: Phase 0 element counts included `games=11`, `mpg=11`, `ppg=11`, `fgPerc=11`, `ftPerc=11`, `tpPerc=11`, `rpg=11`, `orpg=11`, `apg=11`, `spg=11`, `bpg=11`, `topg=11`, and `rating=11`.
 - Observation: Live `boxscore.aspx` exposes player stat elements needed for MVP formulas, but field naming is mixed-case and position labels appear as element names.
   Evidence: Phase 0 box score counts included `fgm=19`, `fga=19`, `tpm=19`, `tpa=19`, `ftm=19`, `fta=19`, `oreb=19`, `reb=19`, `ast=19`, `stl=19`, `blk=19`, `to=19`, `pts=19`, uppercase `PF=38`, and position tags `PG=19`, `SG=19`, `SF=19`, `C=19`; element attributes included `player(id)` and `score(partials)`.
+- Observation: Dependency install completed, but `npm audit` reports two moderate findings through Next.js' bundled PostCSS dependency.
+  Evidence: `npm audit --json` on 2026-06-05 reported `next` via `postcss`, with `postcss` advisory `GHSA-qx2v-qp2m-jg93`; npm's available fix suggested downgrading `next` to `9.3.3`, so no force fix was applied during Milestone 1.
+- Observation: The Browser plugin could not complete the visual smoke because its Node runtime failed to start in this Windows sandbox context.
+  Evidence: Two attempts to open `http://localhost:3000` through the in-app Browser failed with `windows sandbox failed: spawn setup refresh`; local HTTP verification still returned status 200 and confirmed the app title plus Overview and Players content in the HTML.
+- Observation: `next build` updated `tsconfig.json` to include generated development types.
+  Evidence: The build output said Next.js added `.next/dev/types/**/*.ts` to `include`, and the checked-in `tsconfig.json` now contains that include entry.
 
 ## Decision Log
 
@@ -75,12 +84,18 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - Decision: Let the Phase 0 smoke script accept local legacy aliases `BB_LOGIN_NAME` and `BB_ACCESS_KEY`, while the application implementation should still prefer `BB_LOGIN` and `BB_SECURITY_CODE`.
   Rationale: This lets discovery run immediately with the user's existing env file without weakening the PRD's server-side credential contract for the app.
   Date/Author: 2026-06-04 / Codex
+- Decision: Scaffold shadcn-style local UI components manually instead of running the interactive shadcn CLI during Milestone 1.
+  Rationale: The repo was docs-only, and a small checked-in base set (`Button`, `Card`, `Tabs`, `Table`, `Badge`, `Skeleton`) was enough to validate the foundation while avoiding generator churn before the app architecture exists.
+  Date/Author: 2026-06-05 / Codex
+- Decision: Do not run `npm audit fix --force` for the moderate PostCSS advisory during Milestone 1.
+  Rationale: npm's suggested fix was a major downgrade of Next.js, while the current scaffold builds and this is a private local MVP; revisit after Next publishes a version with a non-vulnerable bundled PostCSS.
+  Date/Author: 2026-06-05 / Codex
 
 ## Outcomes & Retrospective
 
-Current outcome: this active ExecPlan now describes how to implement and validate the MVP from the current docs-only repository state, and Phase 0 has confirmed that the current local credentials can authenticate to BBAPI and fetch the core MVP endpoint shapes.
+Current outcome: this active ExecPlan now describes how to implement and validate the MVP from the original docs-only repository state, Phase 0 has confirmed that the current local credentials can authenticate to BBAPI and fetch the core MVP endpoint shapes, and Milestone 1 has produced a working Next.js foundation.
 
-Implementation has not started yet. Remaining gaps are the full application scaffold, BBAPI integration, data adapters, metric library, dashboard UI, cache, tests, and final live smoke validation inside the app. Adapter work should start from the Phase 0 findings in Surprises & Discoveries, especially schedule score child elements, teamstats averages fields, and mixed-case box score stat names.
+Milestone 1 outcome: the repository now has `package.json`, `package-lock.json`, Next.js 16, React 19, TypeScript, Tailwind CSS, ESLint, Vitest, a local `.env.example`, shadcn-style base components, and a static compact dashboard shell. Remaining gaps are BBAPI integration, data adapters, metric library, real dashboard data, cache, richer UI behavior, and final live smoke validation inside the app. Adapter work should start from the Phase 0 findings in Surprises & Discoveries, especially schedule score child elements, teamstats averages fields, and mixed-case box score stat names.
 
 Update this section at every meaningful stopping point. At completion, summarize what works in the running app, which acceptance criteria were verified, which BBAPI data limitations remain, and which items should move into post-MVP work.
 
@@ -519,6 +534,36 @@ Phase 0 redacted result on 2026-06-04:
     logout.aspx: HTTP 200, direct child loggedOut.
     BBAPI smoke test finished.
 
+Milestone 1 validation on 2026-06-05:
+
+    node --version
+    v24.15.0
+
+    npm --version
+    11.12.1
+
+    npm run lint
+    Expected and observed: exited 0.
+
+    npm run typecheck
+    Expected and observed: exited 0.
+
+    npm run test
+    Expected and observed: 1 test file passed, 1 test passed.
+
+    npm run build
+    Expected and observed: exited 0; route `/` prerendered as static content.
+
+    npm run dev
+    Expected and observed: local server answered HTTP 200 at `http://localhost:3000`.
+
+    Invoke-WebRequest -Uri 'http://localhost:3000'
+    Expected and observed: response HTML contained `BuzzerBeater Advanced Stats`, `Overview`, and `Players`.
+
+Milestone 1 browser check note:
+
+    In-app Browser verification was attempted twice after the dev server started, but the Browser plugin's Node runtime failed with `windows sandbox failed: spawn setup refresh`. This did not block Milestone 1 because lint, typecheck, tests, production build, and local HTTP content checks passed. Reattempt Browser verification after the local sandbox issue is resolved or when doing richer frontend work.
+
 ## Interfaces and Dependencies
 
 Runtime dependencies expected by the MVP:
@@ -639,3 +684,7 @@ Keep these names stable unless implementation reveals a concrete reason to renam
 2026-06-04 / Codex: Added Phase 0 BBAPI discovery smoke test before app scaffolding, including `scripts\bbapi-smoke.ps1`, acceptance criteria, and rerun command.
 
 2026-06-04 / Codex: Ran Phase 0 successfully against live BBAPI with redacted output and updated Progress, Surprises & Discoveries, Decision Log, Outcomes, and Artifacts.
+
+2026-06-05 / Codex: Completed Milestone 1 foundation scaffold and validation; recorded npm audit note and Browser plugin startup blocker.
+
+2026-06-05 / Codex: Added a root README for installation, local development startup, shutdown, checks, and Phase 0 smoke testing.
