@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { deriveDashboardMetrics } from "@/domain/aggregate";
+import type { NormalizedBbapiData } from "@/domain/types";
 import type { BbapiClient } from "@/server/bbapi/client";
 import type { BbapiDataEndpoint, BbapiRequestParams } from "@/server/bbapi/endpoints";
 import type { BbapiXmlDocument } from "@/server/bbapi/xml";
@@ -11,7 +13,7 @@ import { refreshDashboardData } from "@/server/data/refresh-dashboard-data";
 describe("dashboard data orchestration", () => {
   it("returns a fresh cached dashboard without calling BBAPI", async () => {
     const cache = new MemoryCacheStore();
-    const cached = {
+    const cachedBase = {
       team: {
         id: "100",
         name: "Cached Club",
@@ -21,6 +23,10 @@ describe("dashboard data orchestration", () => {
       playerSeasonStats: [],
       boxScores: [],
       refreshedAt: "2026-06-05T00:00:00.000Z",
+    };
+    const cached: NormalizedBbapiData = {
+      ...cachedBase,
+      derived: deriveDashboardMetrics(cachedBase),
     };
 
     await cache.set("normalized/dashboard", cached);
@@ -43,6 +49,14 @@ describe("dashboard data orchestration", () => {
     expect(data.players).toHaveLength(1);
     expect(data.matches).toHaveLength(2);
     expect(data.boxScores).toHaveLength(1);
+    expect(data.derived.players[0]).toMatchObject({
+      playerId: "501",
+      gameScoreAverage: expect.any(Number),
+    });
+    expect(data.derived.games[0]).toMatchObject({
+      matchId: "9001",
+      offensiveRating: expect.any(Number),
+    });
     expect(client.requests.map((request) => request.endpoint)).toEqual([
       "teaminfo.aspx",
       "roster.aspx",

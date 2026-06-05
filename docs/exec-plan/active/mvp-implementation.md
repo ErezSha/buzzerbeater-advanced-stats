@@ -23,7 +23,7 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - [x] (2026-06-05 05:43Z) Refactored `src\components\dashboard-tabs.tsx` so each tab panel's card content lives in its own component file before data wiring expands the UI.
 - [x] (2026-06-05 06:00Z) Server boundary completed: added credential loading, BBAPI session login/logout, cookie preservation, retry-on-`NotAuthorized`, XML parsing, typed BBAPI errors, and secret-safe error messages with mocked request coverage.
 - [x] (2026-06-05 17:31Z) Data normalization and cache completed: added typed domain entities, BBAPI XML adapters, redacted fixture parser tests, file-backed cache under `.cache\bbapi`, dashboard refresh/load orchestration, and route handlers for dashboard data, manual refresh, per-game box score lookup, and logout.
-- [ ] Metrics: implement pure metric functions with zero-denominator behavior returning `null`; attach MVP and conditional metrics to player, team, game, and season summaries.
+- [x] (2026-06-05 18:13Z) Metrics completed: added pure MVP metric formulas, player/game/team/trend derivation, low-sample and turnover pattern alerts, dashboard payload `derived` metrics, and unit tests for normal inputs, missing inputs, and zero-denominator behavior.
 - [ ] UI: build the compact app shell, Overview, Players, Games, Trends, and Glossary views with tables, charts, filters, detail panels, loading states, empty states, and specific error messages.
 - [ ] Validation: add unit tests, fixture-based parser tests, build checks, and a manual smoke-test transcript using real credentials that are never committed or logged.
 - [ ] Retrospective: update this ExecPlan with final outcomes, gaps, and any post-MVP follow-ups discovered during implementation.
@@ -62,6 +62,8 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
   Evidence: `npm run typecheck` initially rejected `Pick<NodeJS.ProcessEnv, ...>` and `Partial<Record<...>>` defaults for `process.env`; `src\server\bbapi\config.ts` now uses an optional-key interface with `[key: string]: string | undefined`, and `npm run typecheck` exits 0.
 - Observation: `fast-xml-parser` represents plain repeated score nodes like `<score>88</score>` as string values, not records.
   Evidence: The first schedule adapter test returned `null` for both score values until `src\server\bbapi\adapters\xml-utils.ts` added `childValues` and `readXmlNumber`; `npm run test -- bbapi-adapters dashboard-data` then passed.
+- Observation: Current box score fixtures and live discovery emphasize player rows more than reliable team-total rows, so team game metrics should be derivable from player totals.
+  Evidence: `src\domain\derive-team-stats.ts` sums player stat rows for the user's team and opponent when available, falling back to explicit team stat nodes only when player totals are absent; `tests\dashboard-metrics.test.ts` validates ORtg, possessions, margin, and team summary from fixture player rows.
 
 ## Decision Log
 
@@ -104,6 +106,12 @@ The observable result is a Next.js web app with sortable tables, charts, useful 
 - Decision: Use redacted synthetic XML fixtures for adapter tests instead of persisting live BBAPI XML.
   Rationale: The adapter behavior needs regression coverage, but live team names, player names, match ids, cookies, and credentials should stay out of git.
   Date/Author: 2026-06-05 / Codex
+- Decision: Attach derived metrics directly to the normalized dashboard payload as `derived` instead of creating a separate metrics route.
+  Rationale: The MVP UI needs player, game, team, trend, and alert summaries together with the normalized data, and keeping one cacheable dashboard payload avoids duplicate BBAPI refresh orchestration.
+  Date/Author: 2026-06-05 / Codex
+- Decision: Season-level percentage and factor summaries are averages of available game-level metrics for now.
+  Rationale: This keeps null handling honest when some box score fields are unavailable, while still giving the UI a stable summary; exact weighted season factors can be revisited if live team-total fields prove complete.
+  Date/Author: 2026-06-05 / Codex
 
 ## Outcomes & Retrospective
 
@@ -114,6 +122,8 @@ Milestone 1 outcome: the repository now has `package.json`, `package-lock.json`,
 Milestone 2 outcome: `src\server\bbapi` now contains typed config, endpoint URL construction, XML parsing and BBAPI error detection, typed application errors, and a session client that logs in, stores cookies internally, logs out, and retries exactly once after `NotAuthorized`. `tests\bbapi-client.test.ts` and `tests\fixtures\bbapi\error-not-authorized.xml` validate the boundary with mocked responses only. Remaining gaps are the Milestone 3 adapters, cache, orchestration, and route handlers that will consume this server client.
 
 Milestone 3 outcome: `src\domain\types.ts` defines the MVP team, player, match, season stat, game stat, team game stat, box score, and normalized dashboard entities. `src\server\bbapi\adapters` parses `teaminfo.aspx`, `roster.aspx`, `schedule.aspx`, `teamstats.aspx`, and `boxscore.aspx` documents into those entities, including schedule score child nodes and mixed-case player stat fields such as `PF`. `src\server\cache` provides the file-backed `.cache\bbapi` cache, and `src\server\data` now loads from normalized cache or refreshes BBAPI pages and finished box scores before logging out. Route handlers exist at `/api/dashboard`, `/api/refresh`, `/api/games/[matchId]`, and `/api/logout`. Remaining gaps are metric derivation, UI data consumption, richer error-state tests, and live app smoke validation through the new routes.
+
+Milestone 4 outcome: `src\domain\metrics.ts` now implements safe ratio handling plus FG%, 2P%, 3P%, FT%, eFG%, TSA, TS%, TOV%, Game Score, estimated possessions, ORtg, and DRtg, returning `null` for zero denominators and missing inputs. `src\domain\aggregate.ts`, `derive-player-stats.ts`, `derive-team-stats.ts`, and `derive-trends.ts` attach UI-ready `derived` summaries to every refreshed dashboard payload, including player advanced summaries, team game metrics, season summaries, trend points, rolling averages when sample size allows, and low-sample/turnover alerts. Remaining gaps are UI rendering of these metrics, glossary content for implemented formulas, UI behavior tests, and live route smoke validation.
 
 Update this section at every meaningful stopping point. At completion, summarize what works in the running app, which acceptance criteria were verified, which BBAPI data limitations remain, and which items should move into post-MVP work.
 
@@ -624,6 +634,27 @@ Milestone 3 mocked behavior evidence:
 
     tests\bbapi-adapters.test.ts validates redacted `teaminfo`, `roster`, `schedule`, `teamstats`, and `boxscore` XML adapters, including plain score child nodes and mixed-case `PF` foul tags. `tests\dashboard-data.test.ts` validates that fresh normalized cache avoids BBAPI calls and that refresh fetches the core pages plus one finished box score, writes normalized cache, and logs out.
 
+Milestone 4 validation on 2026-06-05:
+
+    npm run test -- metrics dashboard-metrics dashboard-data
+    Expected and observed: 3 test files passed, 7 tests passed.
+
+    npm run typecheck
+    Expected and observed: exited 0.
+
+    npm run lint
+    Expected and observed: exited 0.
+
+    npm run test
+    Expected and observed: 6 test files passed, 21 tests passed.
+
+    npm run build
+    Expected and observed: exited 0; dynamic server routes remained `/api/dashboard`, `/api/games/[matchId]`, `/api/logout`, and `/api/refresh`.
+
+Milestone 4 mocked behavior evidence:
+
+    tests\metrics.test.ts covers every MVP formula for normal inputs, missing inputs, and zero-denominator behavior. `tests\dashboard-metrics.test.ts` validates player summaries, Game Score, team possessions, ORtg, margin, season record, trends, and low-sample alerts from redacted fixtures. `tests\dashboard-data.test.ts` validates that refreshed dashboard data now includes derived player and game metrics.
+
 ## Interfaces and Dependencies
 
 Runtime dependencies expected by the MVP:
@@ -754,3 +785,5 @@ Keep these names stable unless implementation reveals a concrete reason to renam
 2026-06-05 / Codex: Completed Milestone 2 server BBAPI client boundary with config loading, endpoint helpers, XML/error parsing, private session cookies, one `NotAuthorized` relogin retry, mocked tests, and full validation.
 
 2026-06-05 / Codex: Completed Milestone 3 data normalization, local cache, dashboard orchestration, API route handlers, redacted adapter fixtures, mocked orchestration tests, and full validation.
+
+2026-06-05 / Codex: Completed Milestone 4 metric formulas, dashboard metric aggregation, trend and alert derivation, derived API payload wiring, metric tests, aggregation tests, and full validation.
