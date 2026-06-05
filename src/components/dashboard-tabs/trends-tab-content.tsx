@@ -48,19 +48,27 @@ function RollingCard({
         <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
           <div>
             <div className="text-xs text-muted-foreground">Margin</div>
-            <div className="font-semibold">{formatNumber(value.averageMargin)}</div>
+            <div className="font-semibold">
+              {formatNumber(value.averageMargin)}
+            </div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">ORtg</div>
-            <div className="font-semibold">{formatNumber(value.offensiveRating)}</div>
+            <div className="font-semibold">
+              {formatNumber(value.offensiveRating)}
+            </div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">DRtg</div>
-            <div className="font-semibold">{formatNumber(value.defensiveRating)}</div>
+            <div className="font-semibold">
+              {formatNumber(value.defensiveRating)}
+            </div>
           </div>
         </div>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">Unavailable until enough games are loaded.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Unavailable until enough games are loaded.
+        </p>
       )}
     </div>
   );
@@ -79,7 +87,9 @@ export function TrendsTabContent({ data, isLoading }: TrendsTabContentProps) {
       <Card>
         <CardHeader>
           <CardTitle>Team Trends</CardTitle>
-          <CardDescription>Margin, offensive rating, and defensive rating by finished game.</CardDescription>
+          <CardDescription>
+            Margin, offensive rating, and defensive rating by finished game.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {points.length < 2 ? (
@@ -89,15 +99,43 @@ export function TrendsTabContent({ data, isLoading }: TrendsTabContentProps) {
             />
           ) : (
             <div className="h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData(points)} margin={{ left: 0, right: 12, top: 12, bottom: 0 }}>
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                initialDimension={{ width: 100, height: 50 }}
+              >
+                <LineChart
+                  data={chartData(points)}
+                  margin={{ left: 0, right: 12, top: 12, bottom: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="label" tickMargin={8} />
                   <YAxis width={42} />
                   <Tooltip />
-                  <Line type="monotone" dataKey="margin" name="Margin" stroke="#0f766e" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="offensiveRating" name="ORtg" stroke="#be123c" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="defensiveRating" name="DRtg" stroke="#4b5563" strokeWidth={2} dot={false} />
+                  <Line
+                    type="monotone"
+                    dataKey="margin"
+                    name="Margin"
+                    stroke="#0f766e"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="offensiveRating"
+                    name="ORtg"
+                    stroke="#be123c"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="defensiveRating"
+                    name="DRtg"
+                    stroke="#4b5563"
+                    strokeWidth={2}
+                    dot={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -108,7 +146,9 @@ export function TrendsTabContent({ data, isLoading }: TrendsTabContentProps) {
       <Card>
         <CardHeader>
           <CardTitle>Rolling Averages</CardTitle>
-          <CardDescription>Recent form once the available sample is large enough.</CardDescription>
+          <CardDescription>
+            Recent form once the available sample is large enough.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-3">
           <RollingCard label="Last 3" value={rolling?.last3 ?? null} />
