@@ -75,28 +75,27 @@ function parseTeamGameStat(
 function collectPlayerRows(
   match: XmlRecord | null,
   matchId: string,
-  teamIds: Set<string | null | undefined>,
 ): PlayerGameStat[] {
-  const directRows = childRecords(match, "player");
-  const nestedRows = ["homeTeam", "awayTeam"].flatMap((teamKey) => {
+  const rows = ["homeTeam", "awayTeam"].flatMap((teamKey) => {
     const team = childRecord(match, teamKey);
-    return childRecords(team, "player").map((player) => ({
+    const boxscore = childRecord(team, "boxscore");
+    return childRecords(boxscore, "player").map((player) => ({
       player,
       teamId: readString(team, "id", "teamid"),
     }));
   });
 
-  const rows =
-    nestedRows.length > 0
-      ? nestedRows
-      : directRows.map((player) => ({
-          player,
-          teamId: teamIds.has(readString(player, "teamid", "teamId"))
-            ? readString(player, "teamid", "teamId")
-            : null,
-        }));
+  return rows.map(({ player, teamId }) =>
+    parsePlayerGameStat(player, matchId, teamId),
+  );
+}
 
-  return rows.map(({ player, teamId }) => parsePlayerGameStat(player, matchId, teamId));
+function sumMins(minutesObj: XmlRecord | null): number {
+  return ["PG", "SG", "SF", "PF", "C"].reduce((total, position) => {
+    // Convert the string to a number. If it's undefined or invalid, default to 0.
+    const mins = readNumber(minutesObj, position) || 0;
+    return total + mins;
+  }, 0);
 }
 
 function parsePlayerGameStat(
@@ -104,25 +103,28 @@ function parsePlayerGameStat(
   matchId: string,
   teamId: string | null,
 ): PlayerGameStat {
-  const totalRebounds = readNumber(player, "reb");
-  const offensiveRebounds = readNumber(player, "oreb");
+  const performance = childRecord(player, "performance");
+  const minutesObj = childRecord(player, "minutes");
+
+  const totalRebounds = readNumber(performance, "reb");
+  const offensiveRebounds = readNumber(performance, "oreb");
   const defensiveRebounds =
     readNumber(player, "dreb") ??
     (totalRebounds !== null && offensiveRebounds !== null
       ? totalRebounds - offensiveRebounds
       : null);
-  const fieldGoals = readNumber(player, "fgm");
-  const fieldGoalAttempts = readNumber(player, "fga");
-  const threePointMakes = readNumber(player, "tpm");
-  const threePointAttempts = readNumber(player, "tpa");
+  const fieldGoals = readNumber(performance, "fgm");
+  const fieldGoalAttempts = readNumber(performance, "fga");
+  const threePointMakes = readNumber(performance, "tpm");
+  const threePointAttempts = readNumber(performance, "tpa");
 
   return {
     matchId,
     playerId: requireString(player, "unknown-player", "id", "playerid"),
     playerName: readPlayerName(player),
     teamId,
-    minutes: readNumber(player, "min", "minutes"),
-    points: readNumber(player, "pts"),
+    minutes: sumMins(minutesObj),
+    points: readNumber(performance, "pts"),
     fieldGoals,
     fieldGoalAttempts,
     twoPointMakes:
@@ -135,16 +137,16 @@ function parsePlayerGameStat(
         : readNumber(player, "twpa", "twoPa"),
     threePointMakes,
     threePointAttempts,
-    freeThrows: readNumber(player, "ftm"),
-    freeThrowAttempts: readNumber(player, "fta"),
+    freeThrows: readNumber(performance, "ftm"),
+    freeThrowAttempts: readNumber(performance, "fta"),
     offensiveRebounds,
     defensiveRebounds,
     totalRebounds,
-    assists: readNumber(player, "ast"),
-    steals: readNumber(player, "stl"),
-    blocks: readNumber(player, "blk"),
-    turnovers: readNumber(player, "to", "tov"),
-    fouls: readNumber(player, "PF", "pf"),
+    assists: readNumber(performance, "ast"),
+    steals: readNumber(performance, "stl"),
+    blocks: readNumber(performance, "blk"),
+    turnovers: readNumber(performance, "to", "tov"),
+    fouls: readNumber(performance, "PF", "pf"),
   };
 }
 
