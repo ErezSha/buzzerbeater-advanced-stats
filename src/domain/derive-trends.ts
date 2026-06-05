@@ -50,7 +50,7 @@ export function deriveAlerts(games: TeamGameMetrics[]): DashboardAlert[] {
 
   if (
     recentTurnovers.length === 3 &&
-    recentTurnovers.every((value) => value >= 15)
+    recentTurnovers.every((value) => value >= 0.15)
   ) {
     alerts.push({
       code: "recent-turnovers",

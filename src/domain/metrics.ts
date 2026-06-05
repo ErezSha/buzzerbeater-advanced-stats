@@ -93,7 +93,7 @@ export function turnoverPercentage(
     return null;
   }
 
-  return safeRatio(100 * turnovers, attempts + turnovers);
+  return safeRatio(turnovers, attempts + turnovers);
 }
 
 export function gameScore(input: GameScoreInput): NullableNumber {
