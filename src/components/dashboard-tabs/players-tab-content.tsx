@@ -309,14 +309,14 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
       </CardHeader>
       <CardContent className="grid gap-3">
         <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
-          <label className="flex items-center gap-2">
+          {/*<label className="flex items-center gap-2">
             <input
               type="checkbox"
               checked={activeOnly}
               onChange={(event) => setActiveOnly(event.target.checked)}
             />
             Active roster
-          </label>
+          </label>*/}
           <label className="flex items-center gap-2">
             Min games
             <input
