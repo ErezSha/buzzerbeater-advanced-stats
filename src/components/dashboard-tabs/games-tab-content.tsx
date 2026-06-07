@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -27,10 +26,62 @@ import {
   formatPercent,
   formatSigned,
 } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface GamesTabContentProps {
   data: DashboardViewModel | null;
   isLoading: boolean;
+}
+
+function isScrimm(game: TeamGameMetrics): boolean {
+  const t = game.matchType?.toLowerCase() ?? "";
+  return t.includes("scrimmage") || t.includes("friendly");
+}
+
+function record(games: TeamGameMetrics[], n: number): { wins: number; losses: number; actual: number } | null {
+  const nonScrimm = games.filter((g) => !isScrimm(g));
+  const slice = nonScrimm.slice(-n);
+  if (slice.length === 0) return null;
+  const wins = slice.filter((g) => (g.margin ?? 0) > 0).length;
+  const losses = slice.filter((g) => (g.margin ?? 0) < 0).length;
+  return { wins, losses, actual: slice.length };
+}
+
+function RecentRecords({ games }: { games: TeamGameMetrics[] }) {
+  const slots = [
+    { label: "L3", n: 3 },
+    { label: "L5", n: 5 },
+    { label: "L10", n: 10 },
+  ];
+
+  const entries = slots
+    .map(({ label, n }) => ({ label, n, rec: record(games, n) }))
+    .filter(({ rec }) => rec !== null);
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="rounded-md border p-3">
+      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Recent record (excl. scrimmages)
+      </div>
+      <div className="flex flex-wrap gap-4">
+        {entries.map(({ label, n, rec }) => {
+          if (!rec) return null;
+          const display =
+            rec.actual < n
+              ? `${rec.wins}-${rec.losses} (${rec.actual})`
+              : `${rec.wins}-${rec.losses}`;
+          return (
+            <div key={label}>
+              <div className="text-xs text-muted-foreground">{label}</div>
+              <div className="font-semibold">{display}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function GameDetail({ game }: { game: TeamGameMetrics | null }) {
@@ -52,16 +103,27 @@ function GameDetail({ game }: { game: TeamGameMetrics | null }) {
     ["Pace", formatNumber(game.pace)],
   ];
 
+  const won = (game.margin ?? 0) > 0;
+  const lost = (game.margin ?? 0) < 0;
+
   return (
     <div className="grid gap-3">
       <div className="rounded-md border p-3">
         <div className="text-sm text-muted-foreground">{formatDate(game.date)}</div>
-        <div className="mt-1 text-lg font-semibold">{game.opponentName ?? "Opponent"}</div>
+        <div className="mt-1 text-lg font-semibold text-primary">{game.opponentName ?? "Opponent"}</div>
         <div className="mt-2 flex flex-wrap gap-2">
-          <Badge variant={(game.margin ?? 0) >= 0 ? "secondary" : "outline"}>
+          <Badge
+            variant={(game.margin ?? 0) >= 0 ? "secondary" : "outline"}
+            className={cn(won && "text-green-600", lost && "text-red-500")}
+          >
             {formatInteger(game.points)}-{formatInteger(game.opponentPoints)}
           </Badge>
-          <Badge variant="outline">{formatSigned(game.margin)}</Badge>
+          <Badge
+            variant="outline"
+            className={cn(won && "text-green-600", lost && "text-red-500")}
+          >
+            {formatSigned(game.margin)}
+          </Badge>
         </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -96,9 +158,26 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
     ? (finishedGames.find((game) => game.matchId === selectedMatchId) ?? fallbackGame)
     : fallbackGame;
 
+  const bestMargin = React.useMemo(() => {
+    const vals = finishedGames.map((g) => g.margin).filter((v): v is number => v !== null);
+    return vals.length > 0 ? Math.max(...vals) : null;
+  }, [finishedGames]);
+
+  const bestORtg = React.useMemo(() => {
+    const vals = finishedGames.map((g) => g.offensiveRating).filter((v): v is number => v !== null);
+    return vals.length > 0 ? Math.max(...vals) : null;
+  }, [finishedGames]);
+
+  const bestDRtg = React.useMemo(() => {
+    const vals = finishedGames.map((g) => g.defensiveRating).filter((v): v is number => v !== null);
+    return vals.length > 0 ? Math.min(...vals) : null;
+  }, [finishedGames]);
+
   if (isLoading) {
     return <Skeleton className="h-96" />;
   }
+
+  const displayedGames = [...finishedGames].reverse();
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
@@ -116,42 +195,64 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
               message="Finished games will appear here after BBAPI returns box score data."
             />
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Opponent</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead>Margin</TableHead>
-                    <TableHead>ORtg</TableHead>
-                    <TableHead>DRtg</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[...finishedGames].reverse().map((game) => (
-                    <TableRow key={game.matchId}>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+            <>
+              <RecentRecords games={finishedGames} />
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Opponent</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead>Margin</TableHead>
+                      <TableHead>ORtg</TableHead>
+                      <TableHead>DRtg</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayedGames.map((game) => {
+                      const won = (game.margin ?? 0) > 0;
+                      const lost = (game.margin ?? 0) < 0;
+                      const resultClass = cn(won && "text-green-600", lost && "text-red-500");
+                      const isBestMargin = bestMargin !== null && game.margin === bestMargin;
+                      const isBestORtg = bestORtg !== null && game.offensiveRating === bestORtg;
+                      const isBestDRtg = bestDRtg !== null && game.defensiveRating === bestDRtg;
+
+                      const isSelected =
+                        selectedGame?.matchId === game.matchId;
+
+                      return (
+                        <TableRow
+                          key={game.matchId}
+                          className={cn(
+                            "cursor-pointer hover:bg-primary/10",
+                            isSelected && "bg-primary/10",
+                          )}
                           onClick={() => setSelectedMatchId(game.matchId)}
                         >
-                          {formatDate(game.date)}
-                        </Button>
-                      </TableCell>
-                      <TableCell>{game.opponentName ?? "Opponent"}</TableCell>
-                      <TableCell>
-                        {formatInteger(game.points)}-{formatInteger(game.opponentPoints)}
-                      </TableCell>
-                      <TableCell>{formatSigned(game.margin)}</TableCell>
-                      <TableCell>{formatNumber(game.offensiveRating)}</TableCell>
-                      <TableCell>{formatNumber(game.defensiveRating)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                          <TableCell>{formatDate(game.date)}</TableCell>
+                          <TableCell className="font-medium text-primary">
+                            {game.opponentName ?? "Opponent"}
+                          </TableCell>
+                          <TableCell className={resultClass}>
+                            {formatInteger(game.points)}-{formatInteger(game.opponentPoints)}
+                          </TableCell>
+                          <TableCell className={cn(resultClass, isBestMargin && "font-bold text-primary")}>
+                            {formatSigned(game.margin)}
+                          </TableCell>
+                          <TableCell className={cn(isBestORtg && "font-bold text-primary")}>
+                            {formatNumber(game.offensiveRating)}
+                          </TableCell>
+                          <TableCell className={cn(isBestDRtg && "font-bold text-primary")}>
+                            {formatNumber(game.defensiveRating)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
 
           {scheduledGames.length > 0 ? (

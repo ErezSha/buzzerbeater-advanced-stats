@@ -151,6 +151,7 @@ export interface TeamGameMetrics {
   matchId: string;
   date: string;
   opponentName?: string | null;
+  matchType?: string | null;
   points: number | null;
   opponentPoints: number | null;
   margin: number | null;

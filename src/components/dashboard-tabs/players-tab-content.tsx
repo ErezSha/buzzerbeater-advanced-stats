@@ -137,13 +137,6 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
   }, [activeOnly, data, minGames, minMinutes]);
 
   const leaders = React.useMemo(() => buildLeaderMap(rows), [rows]);
-  const leaderPlayerIds = React.useMemo(() => {
-    const ids = new Set<string>();
-    Object.values(leaders).forEach((leaderSet) => {
-      leaderSet.forEach((playerId) => ids.add(playerId));
-    });
-    return ids;
-  }, [leaders]);
 
   const columns = React.useMemo<ColumnDef<PlayerMetricSummary>[]>(
     () => [
@@ -152,13 +145,7 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
         header: "Player",
         cell: ({ row }) => (
           <div>
-            <div
-              className={cn(
-                "font-medium",
-                leaderPlayerIds.has(row.original.playerId) &&
-                  "text-primary font-semibold",
-              )}
-            >
+            <div className="font-semibold text-primary">
               {row.original.name}
             </div>
             <div className="text-xs text-muted-foreground">
@@ -293,7 +280,7 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
         ),
       },
     ],
-    [leaderPlayerIds, leaders],
+    [leaders],
   );
 
   // TanStack Table intentionally returns stateful helpers from this hook.

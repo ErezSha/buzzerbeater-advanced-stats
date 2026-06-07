@@ -114,6 +114,7 @@ function deriveTeamGameMetric(input: {
     matchId: match.id,
     date: match.date,
     opponentName: match.opponentName,
+    matchType: match.type,
     points,
     opponentPoints,
     margin: opponentPoints !== null ? points - opponentPoints : null,
