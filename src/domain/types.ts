@@ -218,3 +218,8 @@ export interface DerivedDashboardMetrics {
   };
   alerts: DashboardAlert[];
 }
+
+export interface LeaguePlayerMetricSummary extends PlayerMetricSummary {
+  teamId: string;
+  teamName: string;
+}

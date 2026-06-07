@@ -5,7 +5,8 @@ export type BbapiEndpointName =
   | "roster.aspx"
   | "schedule.aspx"
   | "boxscore.aspx"
-  | "teamstats.aspx";
+  | "teamstats.aspx"
+  | "standings.aspx";
 
 export type BbapiErrorCode =
   | "ConfigurationError"

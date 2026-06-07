@@ -123,6 +123,94 @@ Notes:
 }
 ```
 
+## standings.aspx
+
+Called without params to get the logged-in user's league. Teams are grouped into conferences under `regularSeason`.
+
+```xml
+<bbapi version='1'>
+  <standings season='72' retrieved='2026-06-07T20:38:39Z'>
+    <league id='1003' level='2'>II.4</league>
+    <country id='15'>Israel</country>
+    <regularSeason>
+      <conference>
+        <team id='92018'>
+          <teamName>B.C. Basket stars</teamName>
+          <wins>11</wins>
+          <losses>0</losses>
+          <pf>1134</pf>
+          <pa>912</pa>
+          <isBot>0</isBot>
+          <forfeits>0</forfeits>
+        </team>
+        <!-- more teams in this conference... -->
+      </conference>
+      <conference>
+        <!-- second conference teams... -->
+      </conference>
+    </regularSeason>
+  </standings>
+</bbapi>
+```
+
+Parsed JSON shape (relevant part):
+```json
+{
+  "bbapi": {
+    "standings": {
+      "league": { "#text": "II.4", "id": "1003", "level": "2" },
+      "country": { "#text": "Israel", "id": "15" },
+      "regularSeason": {
+        "conference": [
+          { "team": [ { "teamName": "B.C. Basket stars", "id": "92018", "wins": 11, "losses": 0, ... } ] },
+          { "team": [ ... ] }
+        ]
+      }
+    }
+  }
+}
+```
+
+Adapter: `src/server/bbapi/adapters/standings.ts` — flattens all conferences into a single `LeagueTeamEntry[]`.
+
+## teamstats.aspx?teamid=X&mode=totals
+
+Root element is `teamTotals` (not `teamStats`). Stats are in a `totals` child element (not `stats`). Note: `dreb` is absent; compute as `reb - oreb`.
+
+```xml
+<bbapi version='1'>
+  <teamTotals teamid='149530' season='72' retrieved='2026-06-07T20:38:39Z'>
+    <player id='53791622'>
+      <firstName>Dvir</firstName>
+      <lastName>Levin</lastName>
+      <totals>
+        <games>11</games>
+        <minutes>342</minutes>
+        <fgm>63</fgm>
+        <fga>128</fga>
+        <tpm>11</tpm>
+        <tpa>30</tpa>
+        <ftm>18</ftm>
+        <fta>21</fta>
+        <oreb>9</oreb>
+        <reb>28</reb>
+        <!-- dreb absent: compute as reb - oreb -->
+        <ast>45</ast>
+        <to>8</to>
+        <stl>10</stl>
+        <blk>4</blk>
+        <pf>9</pf>
+        <pts>155</pts>
+        <rating>14.3</rating>
+      </totals>
+    </player>
+    <!-- more players... -->
+  </teamTotals>
+</bbapi>
+```
+
+Adapter: `src/server/bbapi/adapters/league-team-stats.ts` → `LeaguePlayerStatTotal[]`.
+
 ## Player row in a game - from a boxscore
 
 ```json

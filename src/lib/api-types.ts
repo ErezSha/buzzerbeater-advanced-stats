@@ -1,4 +1,8 @@
-import type { BoxScore, NormalizedBbapiData } from "@/domain/types";
+import type {
+  BoxScore,
+  LeaguePlayerMetricSummary,
+  NormalizedBbapiData,
+} from "@/domain/types";
 import type { BbapiErrorCode } from "@/server/bbapi/errors";
 
 export interface CacheStatus {
@@ -66,4 +70,19 @@ export interface OpponentScoutData {
 
 export type OpponentApiResponse =
   | { ok: true; data: OpponentScoutData }
+
+export type LeagueDataTier = "lightweight" | "full";
+
+export interface LeagueViewModel {
+  players: LeaguePlayerMetricSummary[];
+  tier: LeagueDataTier;
+}
+
+export type LeagueApiResponse =
+  | {
+      ok: true;
+      data: LeagueViewModel;
+      refreshedAt: string;
+      cacheStatus: CacheStatus;
+    }
   | { ok: false; error: ApiErrorShape };

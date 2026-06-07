@@ -1,9 +1,10 @@
 "use client";
 
-import { Activity, BarChart3, BookOpen, CalendarDays, Users } from "lucide-react";
+import { Activity, BarChart3, BookOpen, CalendarDays, Trophy, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { GamesTabContent } from "@/components/dashboard-tabs/games-tab-content";
 import { GlossaryTabContent } from "@/components/dashboard-tabs/glossary-tab-content";
+import { LeagueTabContent } from "@/components/dashboard-tabs/league-tab-content";
 import { OverviewTabContent } from "@/components/dashboard-tabs/overview-tab-content";
 import { PlayersTabContent } from "@/components/dashboard-tabs/players-tab-content";
 import { TrendsTabContent } from "@/components/dashboard-tabs/trends-tab-content";
@@ -15,7 +16,7 @@ interface DashboardTabsProps {
   isLoading: boolean;
 }
 
-const TAB_VALUES = ["overview", "players", "games", "trends", "glossary"];
+const TAB_VALUES = ["overview", "players", "games", "trends", "league", "glossary"];
 const DEFAULT_TAB = "overview";
 
 function getTabFromUrl(): string {
@@ -60,7 +61,7 @@ export function DashboardTabs({ data, isLoading }: DashboardTabsProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-5">
+      <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-6">
         <TabsTrigger value="overview">
           <Activity className="h-4 w-4" aria-hidden="true" />
           Overview
@@ -76,6 +77,10 @@ export function DashboardTabs({ data, isLoading }: DashboardTabsProps) {
         <TabsTrigger value="trends">
           <BarChart3 className="h-4 w-4" aria-hidden="true" />
           Trends
+        </TabsTrigger>
+        <TabsTrigger value="league">
+          <Trophy className="h-4 w-4" aria-hidden="true" />
+          League
         </TabsTrigger>
         <TabsTrigger value="glossary">
           <BookOpen className="h-4 w-4" aria-hidden="true" />
@@ -97,6 +102,10 @@ export function DashboardTabs({ data, isLoading }: DashboardTabsProps) {
 
       <TabsContent value="trends">
         <TrendsTabContent data={data} isLoading={isLoading} />
+      </TabsContent>
+
+      <TabsContent value="league">
+        <LeagueTabContent />
       </TabsContent>
 
       <TabsContent value="glossary">
