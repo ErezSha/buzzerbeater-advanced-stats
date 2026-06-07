@@ -14,17 +14,20 @@ export function parseBoxScore(
 ): BoxScore {
   const match = childRecord(document.bbapi ?? null, "match");
   const matchId = requireString(match, fallbackMatchId, "id", "matchid");
+  const effortDelta = readNumber(match, "effortDelta");
   const homeTeam = parseTeamGameStat(
     childRecord(match, "homeTeam"),
     matchId,
     true,
+    effortDelta,
   );
   const awayTeam = parseTeamGameStat(
     childRecord(match, "awayTeam"),
     matchId,
     false,
+    effortDelta,
   );
-  // const teamIds = new Set([homeTeam?.teamId, awayTeam?.teamId].filter(Boolean));
+
   const players = collectPlayerRows(match, matchId);
 
   return {
@@ -35,10 +38,31 @@ export function parseBoxScore(
   };
 }
 
+/**
+ * Maps effortDelta (homeEffort − awayEffort, 0=easy 1=normal 2=crunch) to a
+ * human-readable camelCase label for this team.
+ * personal = delta for home, −delta for away.
+ *   +2 → crunchTime (certain)
+ *   +1 → higherEffort (ambiguous: crunch-vs-normal OR normal-vs-easy)
+ *    0 → normal
+ *   −1 → lowerEffort
+ *   −2 → takeItEasy (certain)
+ */
+function effortLabel(delta: number | null, isHome: boolean): string | null {
+  if (delta === null) return null;
+  const personal = isHome ? delta : -delta;
+  if (personal >= 2) return "crunchTime";
+  if (personal === 1) return "higherEffort";
+  if (personal === 0) return "sameEffort";
+  if (personal === -1) return "lowerEffort";
+  return "takeItEasy";
+}
+
 function parseTeamGameStat(
   team: XmlRecord | null,
   matchId: string,
   isHome: boolean,
+  effortDelta: number | null = null,
 ): TeamGameStat | null {
   if (!team) {
     return null;
@@ -53,6 +77,7 @@ function parseTeamGameStat(
     teamName: readString(team, "teamName", "name"),
     offStrategy: readString(team, "offStrategy"),
     defStrategy: readString(team, "defStrategy"),
+    effort: effortLabel(effortDelta, isHome),
     isHome,
     points: readNumber(teamTotals, "pts"),
     fieldGoals: readNumber(teamTotals, "fgm"),
@@ -90,12 +115,26 @@ function collectPlayerRows(
   );
 }
 
+const POSITIONS = ["PG", "SG", "SF", "PF", "C"] as const;
+
 function sumMins(minutesObj: XmlRecord | null): number {
-  return ["PG", "SG", "SF", "PF", "C"].reduce((total, position) => {
-    // Convert the string to a number. If it's undefined or invalid, default to 0.
+  return POSITIONS.reduce((total, position) => {
     const mins = readNumber(minutesObj, position) || 0;
     return total + mins;
   }, 0);
+}
+
+function mostPlayedPosition(minutesObj: XmlRecord | null): string | null {
+  let best: string | null = null;
+  let bestMins = 0;
+  for (const pos of POSITIONS) {
+    const mins = readNumber(minutesObj, pos) ?? 0;
+    if (mins > bestMins) {
+      bestMins = mins;
+      best = pos;
+    }
+  }
+  return best;
 }
 
 function parsePlayerGameStat(
@@ -122,6 +161,7 @@ function parsePlayerGameStat(
     matchId,
     playerId: requireString(player, "unknown-player", "id", "playerid"),
     playerName: readPlayerName(player),
+    mostPlayedPosition: mostPlayedPosition(minutesObj),
     teamId,
     minutes: sumMins(minutesObj),
     points: readNumber(performance, "pts"),

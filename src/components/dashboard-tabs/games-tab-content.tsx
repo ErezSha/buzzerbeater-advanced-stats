@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import {
   Card,
@@ -17,8 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { TeamGameMetrics } from "@/domain/types";
-import type { DashboardViewModel } from "@/lib/api-types";
+import type { TeamGameMetrics, Match } from "@/domain/types";
+import type {
+  DashboardViewModel,
+  OpponentApiResponse,
+  OpponentGameLog,
+  OpponentScoutData,
+} from "@/lib/api-types";
 import {
   formatDate,
   formatInteger,
@@ -33,12 +40,27 @@ interface GamesTabContentProps {
   isLoading: boolean;
 }
 
+// ── helpers ────────────────────────────────────────────────────────────────
+
 function isScrimm(game: TeamGameMetrics): boolean {
   const t = game.matchType?.toLowerCase() ?? "";
   return t.includes("scrimmage") || t.includes("friendly");
 }
 
-function record(games: TeamGameMetrics[], n: number): { wins: number; losses: number; actual: number } | null {
+/**
+ * Split PascalCase / camelCase into words and capitalise the first letter.
+ * "ManToMan" → "Man To Man"   "takeItEasy" → "Take It Easy"
+ */
+function formatCamelCase(s: string | null | undefined): string {
+  if (!s) return "—";
+  const spaced = s.replace(/([a-z])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function record(
+  games: TeamGameMetrics[],
+  n: number,
+): { wins: number; losses: number; actual: number } | null {
   const nonScrimm = games.filter((g) => !isScrimm(g));
   const slice = nonScrimm.slice(-n);
   if (slice.length === 0) return null;
@@ -46,6 +68,8 @@ function record(games: TeamGameMetrics[], n: number): { wins: number; losses: nu
   const losses = slice.filter((g) => (g.margin ?? 0) < 0).length;
   return { wins, losses, actual: slice.length };
 }
+
+// ── RecentRecords ──────────────────────────────────────────────────────────
 
 function RecentRecords({ games }: { games: TeamGameMetrics[] }) {
   const slots = [
@@ -84,12 +108,14 @@ function RecentRecords({ games }: { games: TeamGameMetrics[] }) {
   );
 }
 
+// ── GameDetail (finished game) ─────────────────────────────────────────────
+
 function GameDetail({ game }: { game: TeamGameMetrics | null }) {
   if (!game) {
     return (
       <EmptyState
-        title="Select a finished game"
-        message="Finished matches with available box scores show efficiency, shooting, turnover, and pace details."
+        title="Select a game"
+        message="Click a finished game for efficiency details, or an upcoming game for opponent scouting."
       />
     );
   }
@@ -103,6 +129,12 @@ function GameDetail({ game }: { game: TeamGameMetrics | null }) {
     ["Pace", formatNumber(game.pace)],
   ];
 
+  const strategyItems = [
+    game.offStrategy && `Off: ${formatCamelCase(game.offStrategy)}`,
+    game.defStrategy && `Def: ${formatCamelCase(game.defStrategy)}`,
+    game.effort && `Effort: ${formatCamelCase(game.effort)}`,
+  ].filter(Boolean);
+
   const won = (game.margin ?? 0) > 0;
   const lost = (game.margin ?? 0) < 0;
 
@@ -110,7 +142,9 @@ function GameDetail({ game }: { game: TeamGameMetrics | null }) {
     <div className="grid gap-3">
       <div className="rounded-md border p-3">
         <div className="text-sm text-muted-foreground">{formatDate(game.date)}</div>
-        <div className="mt-1 text-lg font-semibold text-primary">{game.opponentName ?? "Opponent"}</div>
+        <div className="mt-1 text-lg font-semibold text-primary">
+          {game.opponentName ?? "Opponent"}
+        </div>
         <div className="mt-2 flex flex-wrap gap-2">
           <Badge
             variant={(game.margin ?? 0) >= 0 ? "secondary" : "outline"}
@@ -126,14 +160,28 @@ function GameDetail({ game }: { game: TeamGameMetrics | null }) {
           </Badge>
         </div>
       </div>
+      {strategyItems.length > 0 && (
+        <div className="rounded-md border p-3 text-sm">
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {strategyItems.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="rounded-md border p-3">
           <div className="text-xs text-muted-foreground">ORtg</div>
-          <div className="mt-1 text-xl font-semibold">{formatNumber(game.offensiveRating)}</div>
+          <div className="mt-1 text-xl font-semibold">
+            {formatNumber(game.offensiveRating)}
+          </div>
         </div>
         <div className="rounded-md border p-3">
           <div className="text-xs text-muted-foreground">DRtg</div>
-          <div className="mt-1 text-xl font-semibold">{formatNumber(game.defensiveRating)}</div>
+          <div className="mt-1 text-xl font-semibold">
+            {formatNumber(game.defensiveRating)}
+          </div>
         </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -148,30 +196,233 @@ function GameDetail({ game }: { game: TeamGameMetrics | null }) {
   );
 }
 
+// ── UpcomingGameDetail (opponent scouting) ─────────────────────────────────
+
+function ScoutingGameRow({ g }: { g: OpponentGameLog }) {
+  const won = (g.margin ?? 0) > 0;
+  const lost = (g.margin ?? 0) < 0;
+  const resultClass = cn(won && "text-green-600", lost && "text-red-500");
+
+  return (
+    <div className="grid gap-1 rounded-md border p-3 text-sm">
+      {/* Row 1: date + score */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{formatDate(g.date)}</span>
+        {g.teamScore !== null ? (
+          <span className={cn("font-semibold", resultClass)}>
+            {formatInteger(g.teamScore)}–{formatInteger(g.vsScore)}{" "}
+            <span className="text-xs">({formatSigned(g.margin)})</span>
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">No score</span>
+        )}
+      </div>
+      {/* Row 2: vs. name */}
+      {g.vsName && (
+        <div className="text-xs text-muted-foreground">
+          vs. <span className="font-medium text-foreground">{g.vsName}</span>
+        </div>
+      )}
+      {/* Row 3: strategies + effort */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {g.offStrategy && (
+          <span>
+            <span className="text-muted-foreground">Off: </span>
+            {formatCamelCase(g.offStrategy)}
+          </span>
+        )}
+        {g.defStrategy && (
+          <span>
+            <span className="text-muted-foreground">Def: </span>
+            {formatCamelCase(g.defStrategy)}
+          </span>
+        )}
+        {g.effort && (
+          <span>
+            <span className="text-muted-foreground">Effort: </span>
+            {formatCamelCase(g.effort)}
+          </span>
+        )}
+      </div>
+      {/* Row 4: top scorer + top usage */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {g.topScorer && (
+          <span>
+            <span className="text-muted-foreground">Top scorer: </span>
+            <span className="font-medium">{g.topScorer.name}</span>
+            {g.topScorer.position && (
+              <span className="text-muted-foreground"> ({g.topScorer.position})</span>
+            )}
+            {g.topScorer.points != null && (
+              <span className="text-muted-foreground"> {g.topScorer.points} pts</span>
+            )}
+          </span>
+        )}
+        {g.topUsage && (
+          <span>
+            <span className="text-muted-foreground">Top USG: </span>
+            <span className="font-medium">{g.topUsage.name}</span>
+            {g.topUsage.position && (
+              <span className="text-muted-foreground"> ({g.topUsage.position})</span>
+            )}
+            {g.topUsage.usageRate != null && (
+              <span className="text-muted-foreground">
+                {" "}
+                {formatPercent(g.topUsage.usageRate)}
+              </span>
+            )}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function UpcomingGameDetail({
+  match,
+  myTeamId,
+}: {
+  match: Match;
+  myTeamId: string;
+}) {
+  const [scouting, setScouting] = React.useState<OpponentScoutData | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
+
+  const opponentTeamId =
+    match.homeTeamId === myTeamId ? match.awayTeamId : match.homeTeamId;
+
+  React.useEffect(() => {
+    if (!opponentTeamId) {
+      setLoading(false);
+      setFetchError("Opponent team ID is unavailable.");
+      return;
+    }
+
+    setLoading(true);
+    setFetchError(null);
+    setScouting(null);
+
+    fetch(`/api/opponent/${opponentTeamId}`)
+      .then((r) => r.json() as Promise<OpponentApiResponse>)
+      .then((response) => {
+        if (response.ok) {
+          setScouting(response.data);
+        } else {
+          setFetchError(response.error.message);
+        }
+      })
+      .catch(() => setFetchError("Failed to load scouting data."))
+      .finally(() => setLoading(false));
+  }, [opponentTeamId]);
+
+  return (
+    <div className="grid gap-3">
+      <div className="rounded-md border p-3">
+        <div className="text-sm text-muted-foreground">{formatDate(match.date)}</div>
+        <div className="mt-1 text-lg font-semibold text-primary">
+          {match.opponentName ?? "Opponent"}
+        </div>
+        <Badge className="mt-2" variant="outline">
+          Upcoming
+        </Badge>
+      </div>
+
+      {loading && (
+        <div className="grid gap-2">
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+        </div>
+      )}
+
+      {fetchError && !loading && (
+        <div className="rounded-md border p-3 text-sm text-destructive">
+          {fetchError}
+        </div>
+      )}
+
+      {scouting && !loading && scouting.games.length === 0 && (
+        <EmptyState
+          title="No recent games"
+          message="No competitive box scores found for this opponent."
+        />
+      )}
+
+      {scouting && !loading && scouting.games.length > 0 && (
+        <div className="grid gap-2">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Last {scouting.games.length} competitive games
+          </div>
+          {[...scouting.games].reverse().map((g) => (
+            <ScoutingGameRow key={g.matchId} g={g} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── GamesTabContent ────────────────────────────────────────────────────────
+
 export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
   const finishedGames = data?.derived.games ?? [];
-  const scheduledGames =
-    data?.matches.filter((match) => match.status !== "finished").slice(0, 6) ?? [];
-  const [selectedMatchId, setSelectedMatchId] = React.useState<string | null>(null);
-  const fallbackGame = finishedGames[finishedGames.length - 1] ?? null;
-  const selectedGame = selectedMatchId
-    ? (finishedGames.find((game) => game.matchId === selectedMatchId) ?? fallbackGame)
-    : fallbackGame;
+  const myTeamId = data?.team.id ?? "";
 
+  // Filter upcoming: remove games where opponentName is null (all-star exhibitions
+  // where our team isn't a participant) and show at most 6.
+  const scheduledGames = (
+    data?.matches.filter(
+      (match) => match.status !== "finished" && match.opponentName !== null,
+    ) ?? []
+  ).slice(0, 6);
+
+  // Two independent selection states — only one active at a time.
+  const [selectedFinishedId, setSelectedFinishedId] = React.useState<string | null>(null);
+  const [selectedUpcomingId, setSelectedUpcomingId] = React.useState<string | null>(null);
+
+  const fallbackGame = finishedGames[finishedGames.length - 1] ?? null;
+  const selectedGame = selectedUpcomingId
+    ? null
+    : selectedFinishedId
+      ? (finishedGames.find((g) => g.matchId === selectedFinishedId) ?? fallbackGame)
+      : fallbackGame;
+
+  const selectedUpcomingMatch = selectedUpcomingId
+    ? (scheduledGames.find((m) => m.id === selectedUpcomingId) ?? null)
+    : null;
+
+  // Best-value trackers for the finished-games table.
   const bestMargin = React.useMemo(() => {
-    const vals = finishedGames.map((g) => g.margin).filter((v): v is number => v !== null);
+    const vals = finishedGames
+      .map((g) => g.margin)
+      .filter((v): v is number => v !== null);
     return vals.length > 0 ? Math.max(...vals) : null;
   }, [finishedGames]);
 
   const bestORtg = React.useMemo(() => {
-    const vals = finishedGames.map((g) => g.offensiveRating).filter((v): v is number => v !== null);
+    const vals = finishedGames
+      .map((g) => g.offensiveRating)
+      .filter((v): v is number => v !== null);
     return vals.length > 0 ? Math.max(...vals) : null;
   }, [finishedGames]);
 
   const bestDRtg = React.useMemo(() => {
-    const vals = finishedGames.map((g) => g.defensiveRating).filter((v): v is number => v !== null);
+    const vals = finishedGames
+      .map((g) => g.defensiveRating)
+      .filter((v): v is number => v !== null);
     return vals.length > 0 ? Math.min(...vals) : null;
   }, [finishedGames]);
+
+  function selectFinished(matchId: string) {
+    setSelectedFinishedId(matchId);
+    setSelectedUpcomingId(null);
+  }
+
+  function selectUpcoming(matchId: string) {
+    setSelectedUpcomingId(matchId);
+    setSelectedFinishedId(null);
+  }
 
   if (isLoading) {
     return <Skeleton className="h-96" />;
@@ -181,6 +432,7 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+      {/* Left column ── game list */}
       <Card>
         <CardHeader>
           <CardTitle>Games</CardTitle>
@@ -213,13 +465,21 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
                     {displayedGames.map((game) => {
                       const won = (game.margin ?? 0) > 0;
                       const lost = (game.margin ?? 0) < 0;
-                      const resultClass = cn(won && "text-green-600", lost && "text-red-500");
-                      const isBestMargin = bestMargin !== null && game.margin === bestMargin;
-                      const isBestORtg = bestORtg !== null && game.offensiveRating === bestORtg;
-                      const isBestDRtg = bestDRtg !== null && game.defensiveRating === bestDRtg;
-
+                      const resultClass = cn(
+                        won && "text-green-600",
+                        lost && "text-red-500",
+                      );
+                      const isBestMargin =
+                        bestMargin !== null && game.margin === bestMargin;
+                      const isBestORtg =
+                        bestORtg !== null &&
+                        game.offensiveRating === bestORtg;
+                      const isBestDRtg =
+                        bestDRtg !== null &&
+                        game.defensiveRating === bestDRtg;
                       const isSelected =
-                        selectedGame?.matchId === game.matchId;
+                        !selectedUpcomingId &&
+                        (selectedGame?.matchId === game.matchId);
 
                       return (
                         <TableRow
@@ -228,22 +488,36 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
                             "cursor-pointer hover:bg-primary/10",
                             isSelected && "bg-primary/10",
                           )}
-                          onClick={() => setSelectedMatchId(game.matchId)}
+                          onClick={() => selectFinished(game.matchId)}
                         >
                           <TableCell>{formatDate(game.date)}</TableCell>
                           <TableCell className="font-medium text-primary">
                             {game.opponentName ?? "Opponent"}
                           </TableCell>
                           <TableCell className={resultClass}>
-                            {formatInteger(game.points)}-{formatInteger(game.opponentPoints)}
+                            {formatInteger(game.points)}-
+                            {formatInteger(game.opponentPoints)}
                           </TableCell>
-                          <TableCell className={cn(resultClass, isBestMargin && "font-bold text-primary")}>
+                          <TableCell
+                            className={cn(
+                              resultClass,
+                              isBestMargin && "font-bold text-primary",
+                            )}
+                          >
                             {formatSigned(game.margin)}
                           </TableCell>
-                          <TableCell className={cn(isBestORtg && "font-bold text-primary")}>
+                          <TableCell
+                            className={cn(
+                              isBestORtg && "font-bold text-primary",
+                            )}
+                          >
                             {formatNumber(game.offensiveRating)}
                           </TableCell>
-                          <TableCell className={cn(isBestDRtg && "font-bold text-primary")}>
+                          <TableCell
+                            className={cn(
+                              isBestDRtg && "font-bold text-primary",
+                            )}
+                          >
                             {formatNumber(game.defensiveRating)}
                           </TableCell>
                         </TableRow>
@@ -255,32 +529,62 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
             </>
           )}
 
-          {scheduledGames.length > 0 ? (
+          {scheduledGames.length > 0 && (
             <div>
-              <div className="mb-2 text-sm font-medium">Upcoming or unavailable box scores</div>
+              <div className="mb-2 text-sm font-medium">
+                Upcoming or unavailable box scores
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                {scheduledGames.map((match) => (
-                  <div key={match.id} className="rounded-md border p-3 text-sm">
-                    <div className="font-medium">{match.opponentName ?? "Opponent"}</div>
-                    <div className="text-muted-foreground">{formatDate(match.date)}</div>
-                    <Badge className="mt-2" variant="outline">
-                      Box score not available yet
-                    </Badge>
-                  </div>
-                ))}
+                {scheduledGames.map((match) => {
+                  const isSelected = selectedUpcomingId === match.id;
+                  return (
+                    <div
+                      key={match.id}
+                      className={cn(
+                        "cursor-pointer rounded-md border p-3 text-sm transition-colors hover:bg-primary/10",
+                        isSelected && "bg-primary/10",
+                      )}
+                      onClick={() => selectUpcoming(match.id)}
+                    >
+                      <div className="font-medium text-primary">
+                        {match.opponentName}
+                      </div>
+                      <div className="text-muted-foreground">
+                        {formatDate(match.date)}
+                      </div>
+                      <Badge className="mt-2" variant="outline">
+                        Upcoming
+                      </Badge>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          ) : null}
+          )}
         </CardContent>
       </Card>
 
+      {/* Right column ── detail / scouting panel */}
       <Card>
         <CardHeader>
-          <CardTitle>Game Detail</CardTitle>
-          <CardDescription>Efficiency and four-factor summary.</CardDescription>
+          <CardTitle>
+            {selectedUpcomingMatch ? "Opponent Preview" : "Game Detail"}
+          </CardTitle>
+          <CardDescription>
+            {selectedUpcomingMatch
+              ? "Last 5 competitive games for this opponent."
+              : "Efficiency and four-factor summary."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <GameDetail game={selectedGame} />
+          {selectedUpcomingMatch ? (
+            <UpcomingGameDetail
+              match={selectedUpcomingMatch}
+              myTeamId={myTeamId}
+            />
+          ) : (
+            <GameDetail game={selectedGame} />
+          )}
         </CardContent>
       </Card>
     </div>

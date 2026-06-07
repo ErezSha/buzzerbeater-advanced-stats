@@ -38,12 +38,21 @@ export function deriveTeamGameMetrics(
       return [];
     }
 
+    // Find the raw TeamGameStat for our team to pull strategy/effort strings.
+    const rawTeamStat =
+      boxScore.homeTeam?.teamId === team.id
+        ? boxScore.homeTeam
+        : boxScore.awayTeam?.teamId === team.id
+          ? boxScore.awayTeam
+          : null;
+
     return [
-      deriveTeamGameMetric({
-        match,
-        teamTotals,
-        opponentTotals,
-      }),
+      {
+        ...deriveTeamGameMetric({ match, teamTotals, opponentTotals }),
+        offStrategy: rawTeamStat?.offStrategy ?? null,
+        defStrategy: rawTeamStat?.defStrategy ?? null,
+        effort: rawTeamStat?.effort ?? null,
+      },
     ];
   });
 }

@@ -53,6 +53,7 @@ export interface PlayerGameStat {
   matchId: string;
   playerId: string;
   playerName?: string | null;
+  mostPlayedPosition?: string | null;
   teamId?: string | null;
   minutes?: number | null;
   points?: number | null;
@@ -82,6 +83,7 @@ export interface TeamGameStat {
   points?: number | null;
   offStrategy: string | null;
   defStrategy: string | null;
+  effort?: string | null;
   fieldGoals?: number | null;
   fieldGoalAttempts?: number | null;
   threePointMakes?: number | null;
@@ -152,6 +154,9 @@ export interface TeamGameMetrics {
   date: string;
   opponentName?: string | null;
   matchType?: string | null;
+  offStrategy?: string | null;
+  defStrategy?: string | null;
+  effort?: string | null;
   points: number | null;
   opponentPoints: number | null;
   margin: number | null;

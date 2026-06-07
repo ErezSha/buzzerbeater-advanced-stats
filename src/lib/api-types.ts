@@ -37,3 +37,33 @@ export type GameApiResponse =
 export type LogoutApiResponse =
   | { ok: true }
   | { ok: false; error: ApiErrorShape };
+
+export interface OpponentPlayerSummary {
+  name: string;
+  position: string | null;
+  points: number | null;
+  usageRate: number | null;
+}
+
+export interface OpponentGameLog {
+  matchId: string;
+  date: string;
+  vsName: string | null;
+  teamScore: number | null;
+  vsScore: number | null;
+  margin: number | null;
+  offStrategy: string | null;
+  defStrategy: string | null;
+  effort: string | null;
+  topScorer: OpponentPlayerSummary | null;
+  topUsage: OpponentPlayerSummary | null;
+}
+
+export interface OpponentScoutData {
+  teamId: string;
+  games: OpponentGameLog[];
+}
+
+export type OpponentApiResponse =
+  | { ok: true; data: OpponentScoutData }
+  | { ok: false; error: ApiErrorShape };
