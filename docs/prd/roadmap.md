@@ -1,6 +1,6 @@
 # ROADMAP
 
-- [] persistent data so no need to constantly refresh
+- [x] persistent data so no need to constantly refresh
 - [x] make sure scrimmages are not an input to player stats
 - [] league stats
 - [] single player analysis - need to check if we can fetch any player id

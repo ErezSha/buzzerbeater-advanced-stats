@@ -1,7 +1,7 @@
 import type { NormalizedBbapiData } from "@/domain/types";
 import type { CacheStatus } from "@/lib/api-types";
 import { DASHBOARD_CACHE_KEY } from "@/server/cache/cache-keys";
-import { createFileCacheStore } from "@/server/cache/file-cache-store";
+import { getCacheStore } from "@/server/cache/get-cache-store";
 import {
   refreshDashboardData,
   type RefreshDashboardDataOptions,
@@ -19,7 +19,7 @@ export interface LoadDashboardDataOptions extends RefreshDashboardDataOptions {
 export async function loadDashboardData(
   options: LoadDashboardDataOptions = {},
 ): Promise<LoadedDashboardData> {
-  const cache = options.cache ?? createFileCacheStore();
+  const cache = options.cache ?? getCacheStore();
 
   if (!options.forceRefresh) {
     const cached = await cache.get<NormalizedBbapiData>(DASHBOARD_CACHE_KEY);

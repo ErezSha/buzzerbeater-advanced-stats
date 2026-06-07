@@ -14,7 +14,7 @@ import {
   RAW_CACHE_KEYS,
 } from "@/server/cache/cache-keys";
 import type { CacheStore } from "@/server/cache/cache-store";
-import { createFileCacheStore } from "@/server/cache/file-cache-store";
+import { getCacheStore } from "@/server/cache/get-cache-store";
 
 export interface RefreshDashboardDataOptions {
   client?: BbapiClient;
@@ -25,7 +25,7 @@ export async function refreshDashboardData(
   options: RefreshDashboardDataOptions = {},
 ): Promise<NormalizedBbapiData> {
   const client = options.client ?? createBbapiClient();
-  const cache = options.cache ?? createFileCacheStore();
+  const cache = options.cache ?? getCacheStore();
 
   try {
     const teamInfoDocument = await requestAndCache(

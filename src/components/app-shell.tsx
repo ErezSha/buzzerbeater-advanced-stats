@@ -16,11 +16,15 @@ export function AppShell() {
     dashboard.data?.matches.find((match) => match.season)?.season ?? "Current";
   const statusLabel = dashboard.isLoading
     ? "Loading"
-    : dashboard.cacheSource === "refreshed"
-      ? "Refreshed"
-      : dashboard.cacheSource === "fresh-cache"
-        ? "Cached"
-        : "Not connected";
+    : dashboard.isRefreshing
+      ? "Syncing"
+      : dashboard.cacheSource === "refreshed"
+        ? "Refreshed"
+        : dashboard.cacheSource === "fresh-cache"
+          ? "Cached"
+          : dashboard.cacheSource === "local-cache"
+            ? "Offline cache"
+            : "Not connected";
 
   return (
     <main className="min-h-screen">

@@ -1,6 +1,10 @@
 "use client";
 
 import * as React from "react";
+import {
+  DASHBOARD_CACHE_SCHEMA_VERSION,
+  createIdbDashboardCache,
+} from "@/lib/client-cache/dashboard-cache";
 import type {
   ApiErrorShape,
   DashboardApiResponse,
@@ -17,6 +21,8 @@ interface DashboardDataState {
   isRefreshing: boolean;
   refresh: () => Promise<void>;
 }
+
+const cache = createIdbDashboardCache();
 
 async function readResponse<
   T extends DashboardApiResponse | RefreshApiResponse,
@@ -38,6 +44,11 @@ export function useDashboardData(): DashboardDataState {
       setError(null);
       setRefreshedAt(payload.refreshedAt);
       setCacheSource(payload.cacheStatus.source);
+      void cache.write({
+        version: DASHBOARD_CACHE_SCHEMA_VERSION,
+        refreshedAt: payload.refreshedAt,
+        data: payload.data,
+      });
       return;
     }
 
@@ -48,7 +59,24 @@ export function useDashboardData(): DashboardDataState {
     let cancelled = false;
 
     async function load() {
-      setIsLoading(true);
+      // Hydrate instantly from the client cache so a refresh shows data
+      // without a loading skeleton, then revalidate in the background.
+      const cached = await cache.read();
+      const hasCachedData = Boolean(cached) && !cancelled;
+
+      if (cached && !cancelled) {
+        setData(cached.data);
+        setRefreshedAt(cached.refreshedAt);
+        setCacheSource("local-cache");
+      }
+
+      // Only show the full loading state on a cold start (no cached data).
+      if (!hasCachedData) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
+
       try {
         const payload = await readResponse<DashboardApiResponse>(
           await fetch("/api/dashboard"),
@@ -57,7 +85,9 @@ export function useDashboardData(): DashboardDataState {
           applyResponse(payload);
         }
       } catch {
-        if (!cancelled) {
+        // Keep showing cached data on a background revalidation failure;
+        // only surface the error when we have nothing to display.
+        if (!cancelled && !hasCachedData) {
           setError({
             code: "ServerError",
             message: "The dashboard API could not be reached.",
@@ -67,6 +97,7 @@ export function useDashboardData(): DashboardDataState {
       } finally {
         if (!cancelled) {
           setIsLoading(false);
+          setIsRefreshing(false);
         }
       }
     }
