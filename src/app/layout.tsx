@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
+import { Barlow } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+
+const barlow = Barlow({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "BuzzerBeater Advanced Stats",
@@ -23,8 +31,12 @@ export default function RootLayout({
   `;
 
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body>
+    <html
+      lang="en"
+      className={`${barlow.variable} dark`}
+      suppressHydrationWarning
+    >
+      <body className="antialiased">
         <Script
           id="theme-script"
           strategy="beforeInteractive"
