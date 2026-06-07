@@ -3,7 +3,7 @@
 - [x] persistent data so no need to constantly refresh
 - [x] make sure scrimmages are not an input to player stats
 - [x] league stats
-- [] single player analysis - need to check if we can fetch any player id
+- [X] single player analysis
 - [] player PERformence 
 - [] individual ORtg + DRtg
 - [] win shares

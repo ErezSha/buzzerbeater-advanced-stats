@@ -128,6 +128,8 @@ class FixtureBbapiClient implements BbapiClient {
       case "boxscore.aspx":
         expect(params).toMatchObject({ matchid: "9001" });
         return fixture("boxscore.xml", endpoint);
+      default:
+        throw new Error(`Unexpected endpoint: ${endpoint}`);
     }
   }
 }

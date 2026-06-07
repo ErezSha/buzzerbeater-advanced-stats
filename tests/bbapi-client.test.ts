@@ -139,6 +139,30 @@ describe("BBAPI client sessions", () => {
     expect(seenCookieHeaders).toEqual([null, "BBSESSION=first"]);
   });
 
+  it("passes player ids through to player.aspx requests", async () => {
+    const seenUrls: string[] = [];
+    const fetcher: BbapiFetch = async (url) => {
+      seenUrls.push(url.toString());
+
+      if (url.pathname.endsWith("/login.aspx")) {
+        return xmlResponse(
+          '<bbapi version="1"><loggedIn /></bbapi>',
+          "BBSESSION=first; Path=/; HttpOnly",
+        );
+      }
+
+      return xmlResponse('<bbapi version="1"><player id="55713639" /></bbapi>');
+    };
+    const client = createBbapiClient({ config, fetcher });
+
+    await client.requestPage("player.aspx", { playerid: "55713639" });
+
+    expect(seenUrls).toEqual([
+      "http://bbapi.buzzerbeater.com/login.aspx?login=test-manager&code=secret-readonly-code&secondteam=1",
+      "http://bbapi.buzzerbeater.com/player.aspx?playerid=55713639",
+    ]);
+  });
+
   it("coalesces concurrent page requests into one login session", async () => {
     let loginCount = 0;
     const pageCookies: Array<string | null> = [];

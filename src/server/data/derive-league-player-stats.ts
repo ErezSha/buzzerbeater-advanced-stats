@@ -59,6 +59,10 @@ export function deriveLeaguePlayerMetricSummaries(
         points: t.points,
         rebounds: t.totalRebounds ?? 0,
         assists: t.assists ?? 0,
+        steals: t.steals ?? 0,
+        blocks: t.blocks ?? 0,
+        turnovers: t.turnovers ?? 0,
+        fouls: t.fouls ?? 0,
         shooting: shootingMetrics(t),
         turnoverPercentage: turnoverPercentage(
           t.turnovers,

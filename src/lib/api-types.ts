@@ -2,6 +2,7 @@ import type {
   BoxScore,
   LeaguePlayerMetricSummary,
   NormalizedBbapiData,
+  SinglePlayerAnalysis,
 } from "@/domain/types";
 import type { BbapiErrorCode } from "@/server/bbapi/errors";
 
@@ -70,6 +71,7 @@ export interface OpponentScoutData {
 
 export type OpponentApiResponse =
   | { ok: true; data: OpponentScoutData }
+  | { ok: false; error: ApiErrorShape };
 
 export type LeagueDataTier = "lightweight" | "full";
 
@@ -84,5 +86,13 @@ export type LeagueApiResponse =
       data: LeagueViewModel;
       refreshedAt: string;
       cacheStatus: CacheStatus;
+    }
+  | { ok: false; error: ApiErrorShape };
+
+export type PlayerAnalysisApiResponse =
+  | {
+      ok: true;
+      data: SinglePlayerAnalysis;
+      refreshedAt: string;
     }
   | { ok: false; error: ApiErrorShape };

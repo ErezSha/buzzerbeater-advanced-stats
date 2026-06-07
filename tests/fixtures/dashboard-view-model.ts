@@ -63,6 +63,10 @@ export const dashboardViewModelFixture: DashboardViewModel = {
         points: 42,
         rebounds: 9,
         assists: 12,
+        steals: 4,
+        blocks: 1,
+        turnovers: 5,
+        fouls: 6,
         shooting: {
           fieldGoalPercentage: 0.5,
           twoPointPercentage: 0.55,
@@ -91,6 +95,10 @@ export const dashboardViewModelFixture: DashboardViewModel = {
         points: 5,
         rebounds: 3,
         assists: 1,
+        steals: 1,
+        blocks: 0,
+        turnovers: 2,
+        fouls: 3,
         shooting: {
           fieldGoalPercentage: 0.25,
           twoPointPercentage: 0.33,

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseBoxScore } from "@/server/bbapi/adapters/box-score";
+import { parsePlayerDetail } from "@/server/bbapi/adapters/player";
 import { parseRoster } from "@/server/bbapi/adapters/roster";
 import { parseSchedule } from "@/server/bbapi/adapters/schedule";
 import { parseTeamInfo } from "@/server/bbapi/adapters/team-info";
@@ -16,7 +17,10 @@ describe("BBAPI XML adapters", () => {
       name: "Test Club",
       owner: "Test Manager",
       leagueId: "22",
+      leagueName: "III.1",
+      leagueLevel: "3",
       countryId: "1",
+      countryName: "Neverland",
     });
   });
 
@@ -34,6 +38,33 @@ describe("BBAPI XML adapters", () => {
         rosterStatus: "active",
       },
     ]);
+  });
+
+  it("normalizes player detail rows for transfer-market lookups", () => {
+    const player = parsePlayerDetail(fixture("player.xml", "player.aspx"));
+
+    expect(player).toEqual({
+      id: "55713639",
+      name: "Alex Prospect",
+      position: "PG",
+      age: 18,
+      height: "78",
+      salary: 3636,
+      rosterStatus: "unknown",
+      ownerTeamId: "276073",
+      nationalityId: "95",
+      nationalityName: "Barbados",
+      dmi: 54600,
+      jersey: 10,
+      seasonDrafted: 71,
+      leagueDrafted: 17715,
+      teamDrafted: "276073",
+      draftPick: 6,
+      forSale: true,
+      potential: 7,
+      gameShape: 9,
+      skills: null,
+    });
   });
 
   it("normalizes schedule score children and own-team opponent names", () => {

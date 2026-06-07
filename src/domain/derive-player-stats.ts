@@ -92,6 +92,10 @@ export function derivePlayerMetricSummaries(
       points: totals.points,
       rebounds: totals.totalRebounds ?? 0,
       assists: totals.assists ?? 0,
+      steals: totals.steals ?? 0,
+      blocks: totals.blocks ?? 0,
+      turnovers: totals.turnovers ?? 0,
+      fouls: totals.fouls ?? 0,
       shooting: shootingMetrics(totals),
       turnoverPercentage: turnoverPercentage(
         totals.turnovers,

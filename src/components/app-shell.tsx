@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
 import { DashboardTabs } from "@/components/dashboard-tabs";
@@ -65,6 +66,12 @@ export function AppShell() {
               />
               Refresh
             </Button>
+            <Link
+              href="/players"
+              className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-xs font-medium shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+            >
+              Scout Player
+            </Link>
             <ThemeToggle />
           </div>
         </header>

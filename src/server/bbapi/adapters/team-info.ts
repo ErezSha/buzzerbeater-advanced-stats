@@ -12,6 +12,9 @@ export function parseTeamInfo(document: BbapiXmlDocument): Team {
     name: requireString(team, "Unknown team", "teamName", "name"),
     owner: readString(team, "owner", "ownerName", "manager"),
     leagueId: readString(league, "id"),
+    leagueName: readString(league, "#text"),
+    leagueLevel: readString(league, "level"),
     countryId: readString(country, "id"),
+    countryName: readString(country, "#text"),
   };
 }

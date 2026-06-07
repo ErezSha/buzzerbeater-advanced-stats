@@ -3,6 +3,7 @@ export type BbapiEndpointName =
   | "logout.aspx"
   | "teaminfo.aspx"
   | "roster.aspx"
+  | "player.aspx"
   | "schedule.aspx"
   | "boxscore.aspx"
   | "teamstats.aspx"

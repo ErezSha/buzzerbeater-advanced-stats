@@ -1,6 +1,7 @@
 param(
     [string] $EnvPath = ".env.local",
-    [string] $BaseUrl = "http://bbapi.buzzerbeater.com"
+    [string] $BaseUrl = "http://bbapi.buzzerbeater.com",
+    [string] $PlayerId
 )
 
 Set-StrictMode -Version Latest
@@ -251,6 +252,13 @@ try {
         $result = Invoke-BbapiXml -Endpoint $endpoint
         $results.Add($result)
         Write-EndpointReport -Result $result
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($PlayerId)) {
+        Write-Host "Requested one player.aspx smoke test for a supplied player id. The player id is redacted."
+        $playerResult = Invoke-BbapiXml -Endpoint "player.aspx" -Params @{ playerid = $PlayerId }
+        $results.Add($playerResult)
+        Write-EndpointReport -Result $playerResult
     }
 
     $scheduleResult = $results | Where-Object { $_.Endpoint -eq "schedule.aspx" } | Select-Object -First 1

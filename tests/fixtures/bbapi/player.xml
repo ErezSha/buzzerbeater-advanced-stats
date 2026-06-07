@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bbapi version='1'>
+  <player id='55713639' owner='276073' retrieved='2026-06-07T13:53:08Z'>
+    <firstName>Alex</firstName>
+    <lastName>Prospect</lastName>
+    <nationality id='95'>Barbados</nationality>
+    <age>18</age>
+    <height>78</height>
+    <dmi>54600</dmi>
+    <jersey>10</jersey>
+    <salary>3636</salary>
+    <bestPosition>PG</bestPosition>
+    <seasonDrafted>71</seasonDrafted>
+    <leagueDrafted>17715</leagueDrafted>
+    <teamDrafted>276073</teamDrafted>
+    <draftPick>6</draftPick>
+    <forSale>1</forSale>
+    <skills>
+      <gameShape>9</gameShape>
+      <potential>7</potential>
+    </skills>
+  </player>
+</bbapi>

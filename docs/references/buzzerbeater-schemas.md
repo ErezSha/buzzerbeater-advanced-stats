@@ -52,6 +52,43 @@ Notes:
 - `games` counts only official league games (`league.rs`, `league.rs.tv`) — scrimmages and private league are excluded
 - All stat fields are inside the nested `<stats>` element (not direct player attributes)
 
+## player.aspx
+
+Live smoke check on June 7, 2026 confirmed that `player.aspx?playerid=<id>` works for transfer-market player `55713639`.
+
+```xml
+<bbapi version='1'>
+  <player id='55713639' owner='276073' retrieved='2026-06-07T13:53:08Z'>
+    <firstName>Gora</firstName>
+    <lastName>Ward</lastName>
+    <nationality id='95'>Barbados</nationality>
+    <age>18</age>
+    <height>78</height>
+    <dmi>54600</dmi>
+    <jersey>10</jersey>
+    <salary>3636</salary>
+    <bestPosition>PG</bestPosition>
+    <seasonDrafted>71</seasonDrafted>
+    <leagueDrafted>17715</leagueDrafted>
+    <teamDrafted>276073</teamDrafted>
+    <draftPick>6</draftPick>
+    <forSale>1</forSale>
+    <skills>
+      <gameShape>9</gameShape>
+      <potential>7</potential>
+    </skills>
+  </player>
+</bbapi>
+```
+
+Redacted fixture: `tests/fixtures/bbapi/player.xml`
+
+Notes:
+- Required parameter: `?playerid=<id>`
+- The response includes player identity, owner team id, draft metadata, `forSale`, and a small `<skills>` block
+- The live transfer-market response did **not** include season averages, box score rows, or any counting-stat totals
+- That means `player.aspx` alone is not enough for our advanced metrics pipeline; a future single-player dashboard will need additional stat sources such as `teamstats.aspx` and finished-game `boxscore.aspx`
+
 
 
 ## Match

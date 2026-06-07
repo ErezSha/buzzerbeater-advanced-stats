@@ -3,7 +3,10 @@ export interface Team {
   name: string;
   owner?: string | null;
   leagueId?: string | null;
+  leagueName?: string | null;
+  leagueLevel?: string | null;
   countryId?: string | null;
+  countryName?: string | null;
 }
 
 export interface Player {
@@ -14,6 +17,39 @@ export interface Player {
   height?: string | null;
   salary?: number | null;
   rosterStatus: "active" | "inactive" | "unknown";
+}
+
+export interface PlayerSkills {
+  jumpShot?: number | null;
+  jumpRange?: number | null;
+  outsideDefense?: number | null;
+  handling?: number | null;
+  driving?: number | null;
+  passing?: number | null;
+  insideScoring?: number | null;
+  insideDefense?: number | null;
+  shotBlocking?: number | null;
+  rebounding?: number | null;
+  speed?: number | null;
+  stamina?: number | null;
+  freeThrow?: number | null;
+  experience?: number | null;
+}
+
+export interface PlayerDetail extends Player {
+  ownerTeamId?: string | null;
+  nationalityId?: string | null;
+  nationalityName?: string | null;
+  dmi?: number | null;
+  jersey?: number | null;
+  seasonDrafted?: number | null;
+  leagueDrafted?: number | null;
+  teamDrafted?: string | null;
+  draftPick?: number | null;
+  forSale: boolean;
+  potential?: number | null;
+  gameShape?: number | null;
+  skills?: PlayerSkills | null;
 }
 
 export interface Match {
@@ -137,6 +173,10 @@ export interface PlayerMetricSummary {
   points: number;
   rebounds: number;
   assists: number;
+  steals: number;
+  blocks: number;
+  turnovers: number;
+  fouls: number;
   shooting: ShootingMetrics;
   turnoverPercentage: number | null;
   assistPercentage: number | null;
@@ -222,4 +262,21 @@ export interface DerivedDashboardMetrics {
 export interface LeaguePlayerMetricSummary extends PlayerMetricSummary {
   teamId: string;
   teamName: string;
+}
+
+export interface SinglePlayerAnalysis {
+  player: PlayerDetail;
+  ownerTeam: Team;
+  summary: PlayerMetricSummary;
+  finishedMatchCount: number;
+  boxScoreCount: number;
+  refreshedAt: string;
+  previousSnapshot: PlayerScoutingSnapshot | null;
+}
+
+export interface PlayerScoutingSnapshot {
+  savedAt: string;
+  player: PlayerDetail;
+  ownerTeam: Team;
+  summary: PlayerMetricSummary;
 }

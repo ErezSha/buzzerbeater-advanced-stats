@@ -86,3 +86,9 @@ The Phase 0 smoke test verifies live BBAPI auth and endpoint shape without print
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bbapi-smoke.ps1
 ```
+
+To check whether a specific player id can be fetched, pass `-PlayerId`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bbapi-smoke.ps1 -PlayerId 55713639
+```
