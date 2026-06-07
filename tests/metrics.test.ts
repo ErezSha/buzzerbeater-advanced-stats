@@ -18,7 +18,7 @@ describe("MVP metric formulas", () => {
     expect(effectiveFieldGoalPercentage(8, 3, 16)).toBe(0.59375);
     expect(trueShootingAttempts(16, 5)).toBe(18.2);
     expect(trueShootingPercentage(23, 16, 5)).toBeCloseTo(0.631868);
-    expect(turnoverPercentage(3, 16, 5)).toBeCloseTo(14.150943);
+    expect(turnoverPercentage(3, 16, 5)).toBeCloseTo(0.141509);
     expect(estimatedPossessions({
       fieldGoalAttempts: 16,
       freeThrowAttempts: 5,

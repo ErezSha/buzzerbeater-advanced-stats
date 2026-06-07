@@ -1,20 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <bbapi version="1">
-  <teamStats>
+  <teamStats teamid="100" season="72">
     <player id="501">
-      <games>11</games>
-      <mpg>33.5</mpg>
-      <ppg>18.2</ppg>
-      <fgPerc>48.1</fgPerc>
-      <ftPerc>82.0</ftPerc>
-      <tpPerc>37.5</tpPerc>
-      <rpg>6.3</rpg>
-      <orpg>1.1</orpg>
-      <apg>4.4</apg>
-      <spg>1.5</spg>
-      <bpg>0.6</bpg>
-      <topg>2.2</topg>
-      <rating>8.7</rating>
+      <firstName>Alex</firstName>
+      <lastName>Example</lastName>
+      <stats>
+        <games>11</games>
+        <mpg>33.5</mpg>
+        <ppg>18.2</ppg>
+        <fgPerc>48.1</fgPerc>
+        <ftPerc>82.0</ftPerc>
+        <tpPerc>37.5</tpPerc>
+        <rpg>6.3</rpg>
+        <orpg>1.1</orpg>
+        <apg>4.4</apg>
+        <spg>1.5</spg>
+        <bpg>0.6</bpg>
+        <topg>2.2</topg>
+        <fpg>1.0</fpg>
+        <rating>8.7</rating>
+      </stats>
     </player>
   </teamStats>
 </bbapi>

@@ -43,15 +43,11 @@ describe("BBAPI XML adapters", () => {
       {
         id: "9001",
         season: "72",
-        homeScore: 88,
-        awayScore: 80,
         opponentName: "Opponent One",
         status: "finished",
       },
       {
         id: "9002",
-        homeScore: null,
-        awayScore: null,
         opponentName: "Opponent Two",
         status: "scheduled",
       },

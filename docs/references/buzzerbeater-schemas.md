@@ -1,5 +1,59 @@
 # Buzzerbeater Schemas
 
+## Match types (from `schedule.aspx`)
+
+| type | Description | Include in stats? |
+|---|---|---|
+| `league.rs` | Regular season league game | Yes (default) |
+| `league.rs.tv` | Regular season TV game | Yes (default) |
+| `cup` | Domestic cup | Yes (default) |
+| `bbm` | BuzzerBeater cross-league match | Yes (default) |
+| `friendly` | Scrimmage | **No** (excluded by default) |
+| `pl.rs` | Private league regular season | **No** (excluded by default) |
+| `pl.rsneutral` | Private league regular season (neutral) | **No** (excluded by default) |
+| `pl.po` | Private league playoffs | **No** (excluded by default) |
+| `pl.poneutral` | Private league playoffs (neutral) | **No** (excluded by default) |
+
+Filtering is implemented in `src/server/data/refresh-dashboard-data.ts` via `isStatMatch()`.
+`teamstats.aspx` independently only counts official league games (not friendlies or private league).
+
+## teamstats.aspx
+
+```xml
+<bbapi version='1'>
+  <teamStats teamid='91809' season='72' retrieved='2026-06-07T10:58:20Z'>
+    <player id='50442364'>
+      <firstName>Valery</firstName>
+      <lastName>Levitskiy</lastName>
+      <stats>
+        <games>11</games>
+        <mpg>28.2</mpg>
+        <fgPerc>50</fgPerc>
+        <tpPerc>40</tpPerc>
+        <ftPerc>97.5</ftPerc>
+        <orpg>1.5</orpg>
+        <rpg>4.1</rpg>
+        <apg>1.4</apg>
+        <topg>0.9</topg>
+        <spg>1.1</spg>
+        <bpg>0.2</bpg>
+        <ppg>17</ppg>
+        <fpg>1.1</fpg>
+        <rating>15.6</rating>
+      </stats>
+    </player>
+    <!-- more players... -->
+  </teamStats>
+</bbapi>
+```
+
+Notes:
+- Can be fetched for any team via `?teamid=<id>` (no authentication required beyond login)
+- `games` counts only official league games (`league.rs`, `league.rs.tv`) — scrimmages and private league are excluded
+- All stat fields are inside the nested `<stats>` element (not direct player attributes)
+
+
+
 ## Match
 
 ```json

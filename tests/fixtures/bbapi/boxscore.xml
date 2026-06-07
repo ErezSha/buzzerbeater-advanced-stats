@@ -3,47 +3,31 @@
   <match id="9001">
     <homeTeam id="100">
       <teamName>Test Club</teamName>
-      <player id="501">
-        <firstName>Alex</firstName>
-        <lastName>Example</lastName>
-        <min>36</min>
-        <fgm>8</fgm>
-        <fga>15</fga>
-        <tpm>3</tpm>
-        <tpa>7</tpa>
-        <ftm>4</ftm>
-        <fta>5</fta>
-        <oreb>2</oreb>
-        <reb>7</reb>
-        <ast>6</ast>
-        <stl>2</stl>
-        <blk>1</blk>
-        <to>3</to>
-        <PF>4</PF>
-        <pts>23</pts>
-      </player>
+      <offStrategy>LookInside</offStrategy>
+      <defStrategy>ManToMan</defStrategy>
+      <boxscore>
+        <teamTotals fgm="8" fga="15" tpm="3" tpa="7" ftm="4" fta="5" oreb="2" reb="7" ast="6" stl="2" blk="1" to="3" pf="4" pts="23"/>
+        <player id="501">
+          <firstName>Alex</firstName>
+          <lastName>Example</lastName>
+          <minutes PG="0" SG="36" SF="0" PF="0" C="0"/>
+          <performance fgm="8" fga="15" tpm="3" tpa="7" ftm="4" fta="5" oreb="2" reb="7" ast="6" stl="2" blk="1" to="3" pf="4" pts="23"/>
+        </player>
+      </boxscore>
     </homeTeam>
     <awayTeam id="200">
       <teamName>Opponent One</teamName>
-      <player id="701">
-        <firstName>Jamie</firstName>
-        <lastName>Sample</lastName>
-        <min>34</min>
-        <fgm>6</fgm>
-        <fga>14</fga>
-        <tpm>1</tpm>
-        <tpa>4</tpa>
-        <ftm>2</ftm>
-        <fta>2</fta>
-        <oreb>1</oreb>
-        <reb>5</reb>
-        <ast>4</ast>
-        <stl>1</stl>
-        <blk>0</blk>
-        <to>2</to>
-        <PF>3</PF>
-        <pts>15</pts>
-      </player>
+      <offStrategy>Patient</offStrategy>
+      <defStrategy>ManToMan</defStrategy>
+      <boxscore>
+        <teamTotals fgm="6" fga="14" tpm="1" tpa="4" ftm="2" fta="2" oreb="1" reb="5" ast="4" stl="1" blk="0" to="2" pf="3" pts="15"/>
+        <player id="701">
+          <firstName>Jamie</firstName>
+          <lastName>Sample</lastName>
+          <minutes PG="0" SG="0" SF="0" PF="0" C="34"/>
+          <performance fgm="6" fga="14" tpm="1" tpa="4" ftm="2" fta="2" oreb="1" reb="5" ast="4" stl="1" blk="0" to="2" pf="3" pts="15"/>
+        </player>
+      </boxscore>
     </awayTeam>
   </match>
 </bbapi>

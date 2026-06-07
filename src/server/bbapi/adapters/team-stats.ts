@@ -10,21 +10,24 @@ import {
 export function parseTeamStats(document: BbapiXmlDocument): PlayerSeasonStat[] {
   const teamStats = childRecord(document.bbapi ?? null, "teamStats");
 
-  return childRecords(teamStats, "player").map((player) => ({
-    playerId: requireString(player, "unknown-player", "id", "playerid"),
-    games: readNumber(player, "games"),
-    minutesPerGame: readNumber(player, "mpg"),
-    pointsPerGame: readNumber(player, "ppg"),
-    fieldGoalPercentage: readNumber(player, "fgPerc"),
-    freeThrowPercentage: readNumber(player, "ftPerc"),
-    threePointPercentage: readNumber(player, "tpPerc"),
-    reboundsPerGame: readNumber(player, "rpg"),
-    offensiveReboundsPerGame: readNumber(player, "orpg"),
-    assistsPerGame: readNumber(player, "apg"),
-    stealsPerGame: readNumber(player, "spg"),
-    blocksPerGame: readNumber(player, "bpg"),
-    turnoversPerGame: readNumber(player, "topg"),
-    foulsPerGame: readNumber(player, "fpg"),
-    rating: readNumber(player, "rating"),
-  }));
+  return childRecords(teamStats, "player").map((player) => {
+    const stats = childRecord(player, "stats");
+    return {
+      playerId: requireString(player, "unknown-player", "id", "playerid"),
+      games: readNumber(stats, "games"),
+      minutesPerGame: readNumber(stats, "mpg"),
+      pointsPerGame: readNumber(stats, "ppg"),
+      fieldGoalPercentage: readNumber(stats, "fgPerc"),
+      freeThrowPercentage: readNumber(stats, "ftPerc"),
+      threePointPercentage: readNumber(stats, "tpPerc"),
+      reboundsPerGame: readNumber(stats, "rpg"),
+      offensiveReboundsPerGame: readNumber(stats, "orpg"),
+      assistsPerGame: readNumber(stats, "apg"),
+      stealsPerGame: readNumber(stats, "spg"),
+      blocksPerGame: readNumber(stats, "bpg"),
+      turnoversPerGame: readNumber(stats, "topg"),
+      foulsPerGame: readNumber(stats, "fpg"),
+      rating: readNumber(stats, "rating"),
+    };
+  });
 }

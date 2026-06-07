@@ -59,7 +59,8 @@ export async function refreshDashboardData(
     const boxScores = [];
 
     for (const match of matches.filter(
-      (candidate) => candidate.status === "finished",
+      (candidate) =>
+        candidate.status === "finished" && isStatMatch(candidate.type),
     )) {
       try {
         const boxScoreDocument = await requestAndCache(
@@ -100,6 +101,16 @@ export async function refreshDashboardData(
   } finally {
     await client.logout();
   }
+}
+
+/**
+ * Returns true for official competitive matches that should be included in
+ * stats (league, cup, bbm). Excludes scrimmages ("friendly") and private
+ * league matches (type starts with "pl.").
+ */
+function isStatMatch(type: string | null | undefined): boolean {
+  if (!type) return true;
+  return type !== "friendly" && !type.startsWith("pl.");
 }
 
 async function requestAndCache(
