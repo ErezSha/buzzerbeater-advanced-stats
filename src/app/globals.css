@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: 210 25% 98%;
   --foreground: 220 18% 14%;
@@ -21,6 +23,35 @@
   --radius: 0.5rem;
 }
 
+.dark {
+  /* Shifted from pure black to a deep, warm charcoal (6% lightness) */
+  --background: 28 12% 6%;
+
+  /* Changed from bright orange to a soft, readable off-white with a warm tint */
+  --foreground: 32 20% 92%;
+
+  /* Elevated slightly above the background so cards stand out */
+  --card: 28 12% 10%;
+  --card-foreground: 32 20% 92%;
+
+  /* Your awesome signature basketball orange */
+  --primary: 28 96% 52%;
+  --primary-foreground: 0 0% 6%;
+
+  /* Muted elements and borders adjusted to match the new warm-dark depth */
+  --secondary: 28 15% 14%;
+  --secondary-foreground: 34 100% 76%;
+  --muted: 28 12% 12%;
+  --muted-foreground: 32 20% 65%;
+  --accent: 28 84% 16%;
+  --accent-foreground: 34 100% 76%;
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 28 15% 18%;
+  --input: 28 15% 18%;
+  --ring: 28 96% 52%;
+}
+
 * {
   border-color: hsl(var(--border));
 }
@@ -30,4 +61,14 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.text-primary {
+  color: hsl(var(--primary));
+}
+
+/* Optional: If you also want a class to make backgrounds orange */
+.bg-primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }

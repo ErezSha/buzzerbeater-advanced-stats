@@ -107,7 +107,7 @@ export function OverviewTabContent({ data, isLoading }: OverviewTabContentProps)
           {topPlayers.map((player) => (
             <div key={player.playerId} className="flex items-center justify-between rounded-md border p-3">
               <div>
-                <div className="font-medium">{player.name}</div>
+                <div className="font-semibold text-primary">{player.name}</div>
                 <div className="text-sm text-muted-foreground">
                   {player.position ?? "No position"} / {formatInteger(player.games)} games
                 </div>

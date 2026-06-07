@@ -3,6 +3,7 @@
 import { AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
 import { DashboardTabs } from "@/components/dashboard-tabs";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -60,6 +61,7 @@ export function AppShell() {
               />
               Refresh
             </Button>
+            <ThemeToggle />
           </div>
         </header>
 

@@ -30,88 +30,88 @@ import {
 import type { PlayerMetricSummary } from "@/domain/types";
 import type { DashboardViewModel } from "@/lib/api-types";
 import { formatInteger, formatNumber, formatPercent } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface PlayersTabContentProps {
   data: DashboardViewModel | null;
   isLoading: boolean;
 }
 
-const columns: ColumnDef<PlayerMetricSummary>[] = [
+type LeaderColumnId =
+  | "games"
+  | "minutes"
+  | "points"
+  | "ts"
+  | "efg"
+  | "turnoverPercentage"
+  | "usageRate"
+  | "assistPercentage"
+  | "reboundPercentage"
+  | "stealPercentage"
+  | "blockPercentage"
+  | "gameScoreAverage";
+
+type LeaderMap = Record<LeaderColumnId, Set<string>>;
+
+const leaderValueClass = "font-bold text-primary";
+
+const leaderColumns: Array<{
+  id: LeaderColumnId;
+  getValue: (player: PlayerMetricSummary) => number | null | undefined;
+}> = [
+  { id: "games", getValue: (player) => player.games },
+  { id: "minutes", getValue: (player) => player.minutes },
+  { id: "points", getValue: (player) => player.points },
+  { id: "ts", getValue: (player) => player.shooting.trueShootingPercentage },
   {
-    accessorKey: "name",
-    header: "Player",
-    cell: ({ row }) => (
-      <div>
-        <div className="font-medium">{row.original.name}</div>
-        <div className="text-xs text-muted-foreground">
-          {row.original.position ?? "No position"} / {row.original.rosterStatus}
-        </div>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "games",
-    header: "G",
-    cell: ({ row }) => formatInteger(row.original.games),
-  },
-  {
-    accessorKey: "minutes",
-    header: "Min",
-    cell: ({ row }) => formatNumber(row.original.minutes),
-  },
-  {
-    accessorKey: "points",
-    header: "Pts",
-    cell: ({ row }) => formatInteger(row.original.points),
-  },
-  {
-    accessorFn: (row) => row.shooting.trueShootingPercentage,
-    id: "ts",
-    header: "TS%",
-    cell: ({ row }) => formatPercent(row.original.shooting.trueShootingPercentage),
-  },
-  {
-    accessorFn: (row) => row.shooting.effectiveFieldGoalPercentage,
     id: "efg",
-    header: "eFG%",
-    cell: ({ row }) => formatPercent(row.original.shooting.effectiveFieldGoalPercentage),
+    getValue: (player) => player.shooting.effectiveFieldGoalPercentage,
   },
-  {
-    accessorKey: "turnoverPercentage",
-    header: "TOV%",
-    cell: ({ row }) => formatPercent(row.original.turnoverPercentage),
-  },
-  {
-    accessorKey: "usageRate",
-    header: "USG%",
-    cell: ({ row }) => formatPercent(row.original.usageRate),
-  },
-  {
-    accessorKey: "assistPercentage",
-    header: "AST%",
-    cell: ({ row }) => formatPercent(row.original.assistPercentage),
-  },
-  {
-    accessorKey: "reboundPercentage",
-    header: "TRB%",
-    cell: ({ row }) => formatPercent(row.original.reboundPercentage),
-  },
-  {
-    accessorKey: "stealPercentage",
-    header: "STL%",
-    cell: ({ row }) => formatPercent(row.original.stealPercentage),
-  },
-  {
-    accessorKey: "blockPercentage",
-    header: "BLK%",
-    cell: ({ row }) => formatPercent(row.original.blockPercentage),
-  },
-  {
-    accessorKey: "gameScoreAverage",
-    header: "GmSc",
-    cell: ({ row }) => formatNumber(row.original.gameScoreAverage),
-  },
+  { id: "turnoverPercentage", getValue: (player) => player.turnoverPercentage },
+  { id: "usageRate", getValue: (player) => player.usageRate },
+  { id: "assistPercentage", getValue: (player) => player.assistPercentage },
+  { id: "reboundPercentage", getValue: (player) => player.reboundPercentage },
+  { id: "stealPercentage", getValue: (player) => player.stealPercentage },
+  { id: "blockPercentage", getValue: (player) => player.blockPercentage },
+  { id: "gameScoreAverage", getValue: (player) => player.gameScoreAverage },
 ];
+
+function buildLeaderMap(players: PlayerMetricSummary[]): LeaderMap {
+  return leaderColumns.reduce((leaders, column) => {
+    const validRows = players
+      .map((player) => ({
+        playerId: player.playerId,
+        value: column.getValue(player),
+      }))
+      .filter(
+        (entry): entry is { playerId: string; value: number } =>
+          typeof entry.value === "number" && Number.isFinite(entry.value),
+      );
+
+    if (validRows.length === 0) {
+      leaders[column.id] = new Set();
+      return leaders;
+    }
+
+    const maxValue = Math.max(...validRows.map((entry) => entry.value));
+    leaders[column.id] = new Set(
+      validRows
+        .filter((entry) => entry.value === maxValue)
+        .map((entry) => entry.playerId),
+    );
+    return leaders;
+  }, {} as LeaderMap);
+}
+
+function LeaderStat({
+  isLeader,
+  value,
+}: {
+  isLeader: boolean;
+  value: React.ReactNode;
+}) {
+  return <span className={cn(isLeader && leaderValueClass)}>{value}</span>;
+}
 
 export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -135,6 +135,166 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
       return (player.minutes ?? 0) >= minMinutes;
     });
   }, [activeOnly, data, minGames, minMinutes]);
+
+  const leaders = React.useMemo(() => buildLeaderMap(rows), [rows]);
+  const leaderPlayerIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    Object.values(leaders).forEach((leaderSet) => {
+      leaderSet.forEach((playerId) => ids.add(playerId));
+    });
+    return ids;
+  }, [leaders]);
+
+  const columns = React.useMemo<ColumnDef<PlayerMetricSummary>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Player",
+        cell: ({ row }) => (
+          <div>
+            <div
+              className={cn(
+                "font-medium",
+                leaderPlayerIds.has(row.original.playerId) &&
+                  "text-primary font-semibold",
+              )}
+            >
+              {row.original.name}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {row.original.position ?? "No position"} /{" "}
+              {row.original.rosterStatus}
+            </div>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "games",
+        header: "G",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.games.has(row.original.playerId)}
+            value={formatInteger(row.original.games)}
+          />
+        ),
+      },
+      {
+        accessorKey: "minutes",
+        header: "Min",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.minutes.has(row.original.playerId)}
+            value={formatNumber(row.original.minutes)}
+          />
+        ),
+      },
+      {
+        accessorKey: "points",
+        header: "Pts",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.points.has(row.original.playerId)}
+            value={formatInteger(row.original.points)}
+          />
+        ),
+      },
+      {
+        accessorFn: (row) => row.shooting.trueShootingPercentage,
+        id: "ts",
+        header: "TS%",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.ts.has(row.original.playerId)}
+            value={formatPercent(row.original.shooting.trueShootingPercentage)}
+          />
+        ),
+      },
+      {
+        accessorFn: (row) => row.shooting.effectiveFieldGoalPercentage,
+        id: "efg",
+        header: "eFG%",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.efg.has(row.original.playerId)}
+            value={formatPercent(
+              row.original.shooting.effectiveFieldGoalPercentage,
+            )}
+          />
+        ),
+      },
+      {
+        accessorKey: "turnoverPercentage",
+        header: "TOV%",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.turnoverPercentage.has(row.original.playerId)}
+            value={formatPercent(row.original.turnoverPercentage)}
+          />
+        ),
+      },
+      {
+        accessorKey: "usageRate",
+        header: "USG%",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.usageRate.has(row.original.playerId)}
+            value={formatPercent(row.original.usageRate)}
+          />
+        ),
+      },
+      {
+        accessorKey: "assistPercentage",
+        header: "AST%",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.assistPercentage.has(row.original.playerId)}
+            value={formatPercent(row.original.assistPercentage)}
+          />
+        ),
+      },
+      {
+        accessorKey: "reboundPercentage",
+        header: "TRB%",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.reboundPercentage.has(row.original.playerId)}
+            value={formatPercent(row.original.reboundPercentage)}
+          />
+        ),
+      },
+      {
+        accessorKey: "stealPercentage",
+        header: "STL%",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.stealPercentage.has(row.original.playerId)}
+            value={formatPercent(row.original.stealPercentage)}
+          />
+        ),
+      },
+      {
+        accessorKey: "blockPercentage",
+        header: "BLK%",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.blockPercentage.has(row.original.playerId)}
+            value={formatPercent(row.original.blockPercentage)}
+          />
+        ),
+      },
+      {
+        accessorKey: "gameScoreAverage",
+        header: "GmSc",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.gameScoreAverage.has(row.original.playerId)}
+            value={formatNumber(row.original.gameScoreAverage)}
+          />
+        ),
+      },
+    ],
+    [leaderPlayerIds, leaders],
+  );
 
   // TanStack Table intentionally returns stateful helpers from this hook.
   // eslint-disable-next-line react-hooks/incompatible-library
