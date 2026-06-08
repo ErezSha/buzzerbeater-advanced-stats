@@ -26,6 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  stickyColumn,
 } from "@/components/ui/table";
 import type { PlayerMetricSummary } from "@/domain/types";
 import type { DashboardViewModel } from "@/lib/api-types";
@@ -144,11 +145,14 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
         accessorKey: "name",
         header: "Player",
         cell: ({ row }) => (
-          <div>
-            <div className="font-semibold text-primary">
+          <div className="max-w-[6rem] sm:max-w-[12rem]">
+            <div
+              className="truncate font-semibold text-primary"
+              title={row.original.name}
+            >
               {row.original.name}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="truncate text-xs text-muted-foreground">
               {row.original.position ?? "No position"} /{" "}
               {row.original.rosterStatus}
             </div>
@@ -346,50 +350,54 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
             message="Lower the game or minute threshold, or include inactive roster entries."
           />
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id}>
-                        <button
-                          className="inline-flex items-center gap-1 font-medium"
-                          onClick={header.column.getToggleSortingHandler()}
-                          type="button"
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                          {header.column.getIsSorted() === "asc" ? (
-                            <ArrowUp className="h-3 w-3" aria-hidden="true" />
-                          ) : null}
-                          {header.column.getIsSorted() === "desc" ? (
-                            <ArrowDown className="h-3 w-3" aria-hidden="true" />
-                          ) : null}
-                        </button>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header, j) => (
+                    <TableHead
+                      key={header.id}
+                      className={cn(j === 0 && stickyColumn)}
+                    >
+                      <button
+                        className="inline-flex items-center gap-1 font-medium"
+                        onClick={header.column.getToggleSortingHandler()}
+                        type="button"
+                      >
                         {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
+                          header.column.columnDef.header,
+                          header.getContext(),
                         )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                        {header.column.getIsSorted() === "asc" ? (
+                          <ArrowUp className="h-3 w-3" aria-hidden="true" />
+                        ) : null}
+                        {header.column.getIsSorted() === "desc" ? (
+                          <ArrowDown className="h-3 w-3" aria-hidden="true" />
+                        ) : null}
+                      </button>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell, j) => (
+                    <TableCell
+                      key={cell.id}
+                      className={cn(j === 0 && stickyColumn)}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </CardContent>
     </Card>

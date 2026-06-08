@@ -114,9 +114,13 @@ export async function refreshLeagueDataFull(
     const refreshedAt = new Date().toISOString();
     const viewModel: LeagueViewModel = { players, tier: "full" };
 
-    await cache.set(LEAGUE_FULL_CACHE_KEY, { data: viewModel, refreshedAt }, {
-      ttlMs: CACHE_TTLS.normalizedLeagueMs,
-    });
+    await cache.set(
+      LEAGUE_FULL_CACHE_KEY,
+      { data: viewModel, refreshedAt },
+      {
+        ttlMs: CACHE_TTLS.normalizedLeagueMs,
+      },
+    );
 
     return { data: viewModel, refreshedAt };
   } finally {

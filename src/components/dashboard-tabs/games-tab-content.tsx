@@ -141,7 +141,9 @@ function GameDetail({ game }: { game: TeamGameMetrics | null }) {
   return (
     <div className="grid gap-3">
       <div className="rounded-md border p-3">
-        <div className="text-sm text-muted-foreground">{formatDate(game.date)}</div>
+        <div className="text-sm text-muted-foreground">
+          {formatDate(game.date)}
+        </div>
         <div className="mt-1 text-lg font-semibold text-primary">
           {game.opponentName ?? "Opponent"}
         </div>
@@ -207,7 +209,9 @@ function ScoutingGameRow({ g }: { g: OpponentGameLog }) {
     <div className="grid gap-1 rounded-md border p-3 text-sm">
       {/* Row 1: date + score */}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{formatDate(g.date)}</span>
+        <span className="text-xs text-muted-foreground">
+          {formatDate(g.date)}
+        </span>
         {g.teamScore !== null ? (
           <span className={cn("font-semibold", resultClass)}>
             {formatInteger(g.teamScore)}–{formatInteger(g.vsScore)}{" "}
@@ -251,10 +255,16 @@ function ScoutingGameRow({ g }: { g: OpponentGameLog }) {
             <span className="text-muted-foreground">Top scorer: </span>
             <span className="font-medium">{g.topScorer.name}</span>
             {g.topScorer.position && (
-              <span className="text-muted-foreground"> ({g.topScorer.position})</span>
+              <span className="text-muted-foreground">
+                {" "}
+                ({g.topScorer.position})
+              </span>
             )}
             {g.topScorer.points != null && (
-              <span className="text-muted-foreground"> {g.topScorer.points} pts</span>
+              <span className="text-muted-foreground">
+                {" "}
+                {g.topScorer.points} pts
+              </span>
             )}
           </span>
         )}
@@ -263,7 +273,10 @@ function ScoutingGameRow({ g }: { g: OpponentGameLog }) {
             <span className="text-muted-foreground">Top USG: </span>
             <span className="font-medium">{g.topUsage.name}</span>
             {g.topUsage.position && (
-              <span className="text-muted-foreground"> ({g.topUsage.position})</span>
+              <span className="text-muted-foreground">
+                {" "}
+                ({g.topUsage.position})
+              </span>
             )}
             {g.topUsage.usageRate != null && (
               <span className="text-muted-foreground">
@@ -285,7 +298,9 @@ function UpcomingGameDetail({
   match: Match;
   myTeamId: string;
 }) {
-  const [scouting, setScouting] = React.useState<OpponentScoutData | null>(null);
+  const [scouting, setScouting] = React.useState<OpponentScoutData | null>(
+    null,
+  );
   const [loading, setLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<string | null>(null);
 
@@ -319,7 +334,9 @@ function UpcomingGameDetail({
   return (
     <div className="grid gap-3">
       <div className="rounded-md border p-3">
-        <div className="text-sm text-muted-foreground">{formatDate(match.date)}</div>
+        <div className="text-sm text-muted-foreground">
+          {formatDate(match.date)}
+        </div>
         <div className="mt-1 text-lg font-semibold text-primary">
           {match.opponentName ?? "Opponent"}
         </div>
@@ -378,14 +395,19 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
   ).slice(0, 6);
 
   // Two independent selection states — only one active at a time.
-  const [selectedFinishedId, setSelectedFinishedId] = React.useState<string | null>(null);
-  const [selectedUpcomingId, setSelectedUpcomingId] = React.useState<string | null>(null);
+  const [selectedFinishedId, setSelectedFinishedId] = React.useState<
+    string | null
+  >(null);
+  const [selectedUpcomingId, setSelectedUpcomingId] = React.useState<
+    string | null
+  >(null);
 
   const fallbackGame = finishedGames[finishedGames.length - 1] ?? null;
   const selectedGame = selectedUpcomingId
     ? null
     : selectedFinishedId
-      ? (finishedGames.find((g) => g.matchId === selectedFinishedId) ?? fallbackGame)
+      ? (finishedGames.find((g) => g.matchId === selectedFinishedId) ??
+        fallbackGame)
       : fallbackGame;
 
   const selectedUpcomingMatch = selectedUpcomingId
@@ -437,7 +459,8 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
         <CardHeader>
           <CardTitle>Games</CardTitle>
           <CardDescription>
-            Finished matches use cached box scores; scheduled matches stay clearly marked.
+            Finished matches use cached box scores; scheduled matches stay
+            clearly marked.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -449,83 +472,80 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
           ) : (
             <>
               <RecentRecords games={finishedGames} />
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Opponent</TableHead>
-                      <TableHead>Score</TableHead>
-                      <TableHead>Margin</TableHead>
-                      <TableHead>ORtg</TableHead>
-                      <TableHead>DRtg</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {displayedGames.map((game) => {
-                      const won = (game.margin ?? 0) > 0;
-                      const lost = (game.margin ?? 0) < 0;
-                      const resultClass = cn(
-                        won && "text-green-600",
-                        lost && "text-red-500",
-                      );
-                      const isBestMargin =
-                        bestMargin !== null && game.margin === bestMargin;
-                      const isBestORtg =
-                        bestORtg !== null &&
-                        game.offensiveRating === bestORtg;
-                      const isBestDRtg =
-                        bestDRtg !== null &&
-                        game.defensiveRating === bestDRtg;
-                      const isSelected =
-                        !selectedUpcomingId &&
-                        (selectedGame?.matchId === game.matchId);
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Opponent</TableHead>
+                    <TableHead>Score</TableHead>
+                    <TableHead>Margin</TableHead>
+                    <TableHead>ORtg</TableHead>
+                    <TableHead>DRtg</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayedGames.map((game) => {
+                    const won = (game.margin ?? 0) > 0;
+                    const lost = (game.margin ?? 0) < 0;
+                    const resultClass = cn(
+                      won && "text-green-600",
+                      lost && "text-red-500",
+                    );
+                    const isBestMargin =
+                      bestMargin !== null && game.margin === bestMargin;
+                    const isBestORtg =
+                      bestORtg !== null && game.offensiveRating === bestORtg;
+                    const isBestDRtg =
+                      bestDRtg !== null && game.defensiveRating === bestDRtg;
+                    const isSelected =
+                      !selectedUpcomingId &&
+                      selectedGame?.matchId === game.matchId;
 
-                      return (
-                        <TableRow
-                          key={game.matchId}
-                          className={cn(
-                            "cursor-pointer hover:bg-primary/10",
-                            isSelected && "bg-primary/10",
-                          )}
-                          onClick={() => selectFinished(game.matchId)}
-                        >
-                          <TableCell>{formatDate(game.date)}</TableCell>
-                          <TableCell className="font-medium text-primary">
+                    return (
+                      <TableRow
+                        key={game.matchId}
+                        className={cn(
+                          "cursor-pointer hover:bg-primary/10",
+                          isSelected && "bg-primary/10",
+                        )}
+                        onClick={() => selectFinished(game.matchId)}
+                      >
+                        <TableCell>{formatDate(game.date)}</TableCell>
+                        <TableCell className="font-medium text-primary">
+                          <div
+                            className="max-w-[8rem] truncate"
+                            title={game.opponentName ?? "Opponent"}
+                          >
                             {game.opponentName ?? "Opponent"}
-                          </TableCell>
-                          <TableCell className={resultClass}>
-                            {formatInteger(game.points)}-
-                            {formatInteger(game.opponentPoints)}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              resultClass,
-                              isBestMargin && "font-bold text-primary",
-                            )}
-                          >
-                            {formatSigned(game.margin)}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              isBestORtg && "font-bold text-primary",
-                            )}
-                          >
-                            {formatNumber(game.offensiveRating)}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              isBestDRtg && "font-bold text-primary",
-                            )}
-                          >
-                            {formatNumber(game.defensiveRating)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className={resultClass}>
+                          {formatInteger(game.points)}-
+                          {formatInteger(game.opponentPoints)}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            resultClass,
+                            isBestMargin && "font-bold text-primary",
+                          )}
+                        >
+                          {formatSigned(game.margin)}
+                        </TableCell>
+                        <TableCell
+                          className={cn(isBestORtg && "font-bold text-primary")}
+                        >
+                          {formatNumber(game.offensiveRating)}
+                        </TableCell>
+                        <TableCell
+                          className={cn(isBestDRtg && "font-bold text-primary")}
+                        >
+                          {formatNumber(game.defensiveRating)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </>
           )}
 

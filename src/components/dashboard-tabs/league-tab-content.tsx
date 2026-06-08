@@ -28,6 +28,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  stickyColumn,
 } from "@/components/ui/table";
 import { useLeagueData } from "@/components/dashboard/use-league-data";
 import type { LeaguePlayerMetricSummary } from "@/domain/types";
@@ -38,8 +39,20 @@ import { cn } from "@/lib/utils";
 const PAGE_SIZE = 15;
 
 const COLUMN_HEADERS = [
-  "Player", "Team", "G", "Min", "Pts",
-  "TS%", "eFG%", "TOV%", "USG%", "AST%", "TRB%", "STL%", "BLK%", "GmSc",
+  "Player",
+  "Team",
+  "G",
+  "Min",
+  "Pts",
+  "TS%",
+  "eFG%",
+  "TOV%",
+  "USG%",
+  "AST%",
+  "TRB%",
+  "STL%",
+  "BLK%",
+  "GmSc",
 ];
 
 function LeagueTableSkeleton() {
@@ -50,32 +63,33 @@ function LeagueTableSkeleton() {
         <Skeleton className="mt-1 h-4 w-72" />
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {COLUMN_HEADERS.map((h) => (
-                  <TableHead key={h}>
-                    <span className="text-muted-foreground">{h}</span>
-                  </TableHead>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {COLUMN_HEADERS.map((h, j) => (
+                <TableHead key={h} className={cn(j === 0 && stickyColumn)}>
+                  <span className="text-muted-foreground">{h}</span>
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+              <TableRow key={i} className="animate-pulse">
+                {COLUMN_HEADERS.map((h, j) => (
+                  <TableCell key={h} className={cn(j === 0 && stickyColumn)}>
+                    <Skeleton
+                      className={cn(
+                        "h-4 bg-muted-foreground/15",
+                        j === 0 ? "w-28" : j === 1 ? "w-20" : "w-10",
+                      )}
+                    />
+                  </TableCell>
                 ))}
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                <TableRow key={i} className="animate-pulse">
-                  {COLUMN_HEADERS.map((h, j) => (
-                    <TableCell key={h}>
-                      <Skeleton
-                        className={cn("h-4 bg-muted-foreground/15", j === 0 ? "w-28" : j === 1 ? "w-20" : "w-10")}
-                      />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
@@ -181,8 +195,13 @@ export function LeagueTabContent() {
         accessorKey: "name",
         header: "Player",
         cell: ({ row }) => (
-          <div>
-            <div className="font-semibold text-primary">{row.original.name}</div>
+          <div className="max-w-[6rem] sm:max-w-[12rem]">
+            <div
+              className="truncate font-semibold text-primary"
+              title={row.original.name}
+            >
+              {row.original.name}
+            </div>
             <div className="text-xs text-muted-foreground">
               {row.original.position ?? "—"}
             </div>
@@ -244,7 +263,9 @@ export function LeagueTabContent() {
         cell: ({ row }) => (
           <LeaderStat
             isLeader={leaders.efg.has(row.original.playerId)}
-            value={formatPercent(row.original.shooting.effectiveFieldGoalPercentage)}
+            value={formatPercent(
+              row.original.shooting.effectiveFieldGoalPercentage,
+            )}
           />
         ),
       },
@@ -348,10 +369,7 @@ export function LeagueTabContent() {
 
   if (error) {
     return (
-      <EmptyState
-        title="League data unavailable"
-        message={error.message}
-      />
+      <EmptyState title="League data unavailable" message={error.message} />
     );
   }
 
@@ -421,52 +439,55 @@ export function LeagueTabContent() {
           <Badge variant="outline">{rows.length} players</Badge>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      <button
-                        className="inline-flex items-center gap-1 font-medium"
-                        onClick={header.column.getToggleSortingHandler()}
-                        type="button"
-                      >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                        {header.column.getIsSorted() === "asc" ? (
-                          <ArrowUp className="h-3 w-3" aria-hidden="true" />
-                        ) : null}
-                        {header.column.getIsSorted() === "desc" ? (
-                          <ArrowDown className="h-3 w-3" aria-hidden="true" />
-                        ) : null}
-                      </button>
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header, j) => (
+                  <TableHead
+                    key={header.id}
+                    className={cn(j === 0 && stickyColumn)}
+                  >
+                    <button
+                      className="inline-flex items-center gap-1 font-medium"
+                      onClick={header.column.getToggleSortingHandler()}
+                      type="button"
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                      {header.column.getIsSorted() === "asc" ? (
+                        <ArrowUp className="h-3 w-3" aria-hidden="true" />
+                      ) : null}
+                      {header.column.getIsSorted() === "desc" ? (
+                        <ArrowDown className="h-3 w-3" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell, j) => (
+                  <TableCell
+                    key={cell.id}
+                    className={cn(j === 0 && stickyColumn)}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Page {pageIndex + 1} of {pageCount || 1} &mdash;{" "}
-            {rows.length} total
+            Page {pageIndex + 1} of {pageCount || 1} &mdash; {rows.length} total
           </span>
           <div className="flex gap-2">
             <Button
