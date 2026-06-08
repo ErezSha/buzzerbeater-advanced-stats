@@ -73,6 +73,8 @@ export function deriveLeaguePlayerMetricSummaries(
           t.assists,
           teamTotals.fieldGoals,
           t.fieldGoals,
+          t.minutes,
+          teamTotals.minutes,
         ),
         // Approximate: (league_total_reb - this_team_reb) / (n_teams - 1)
         // gives average opponent season rebounds — a reasonable proxy since
@@ -81,6 +83,8 @@ export function deriveLeaguePlayerMetricSummaries(
           t.totalRebounds,
           teamTotals.totalRebounds,
           estimatedOppReb,
+          t.minutes,
+          teamTotals.minutes,
         ),
         usageRate: usageRate(
           t.fieldGoalAttempts,
@@ -89,6 +93,8 @@ export function deriveLeaguePlayerMetricSummaries(
           teamTotals.fieldGoalAttempts,
           teamTotals.freeThrowAttempts,
           teamTotals.turnovers,
+          t.minutes,
+          teamTotals.minutes,
         ),
         // Require opponent data — remain null in lightweight mode.
         stealPercentage: null,

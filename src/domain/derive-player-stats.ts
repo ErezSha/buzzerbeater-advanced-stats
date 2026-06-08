@@ -42,6 +42,19 @@ export function derivePlayerMetricSummaries(
     const homeTeamId = boxScore.homeTeam?.teamId ?? null;
     const awayTeamId = boxScore.awayTeam?.teamId ?? null;
 
+    // Team minutes (Tm MP) are not on the team-totals payload, so recover them
+    // by summing each side's player minutes. Needed for the minutes-share factor
+    // in AST%, BLK%, STL%, TRB%, and Usg%.
+    const teamMinutesById = new Map<string, number>();
+    for (const player of boxScore.players) {
+      if (player.teamId != null && player.minutes != null) {
+        teamMinutesById.set(
+          player.teamId,
+          (teamMinutesById.get(player.teamId) ?? 0) + player.minutes,
+        );
+      }
+    }
+
     for (const stat of boxScore.players) {
       const totals = statsByPlayer.get(stat.playerId) ?? emptyTotals();
       statsByPlayer.set(stat.playerId, addPlayerStat(totals, stat));
@@ -59,7 +72,10 @@ export function derivePlayerMetricSummaries(
 
       if (stat.teamId && (homeTeamId || awayTeamId)) {
         const isHome = stat.teamId === homeTeamId;
-        const myTeamTotals = isHome ? homeTeamTotals : awayTeamTotals;
+        const myTeamTotals = {
+          ...(isHome ? homeTeamTotals : awayTeamTotals),
+          minutes: teamMinutesById.get(stat.teamId) ?? null,
+        };
         const oppTotals = isHome ? awayTeamTotals : homeTeamTotals;
 
         const existingTeam = teamTotalsByPlayer.get(stat.playerId) ?? emptyTotals();
@@ -106,11 +122,15 @@ export function derivePlayerMetricSummaries(
         totals.assists,
         teamTotals.fieldGoals,
         totals.fieldGoals,
+        totals.minutes,
+        teamTotals.minutes,
       ),
       blockPercentage: blockPercentage(
         totals.blocks,
         oppTotals.fieldGoalAttempts,
         oppTotals.threePointAttempts,
+        totals.minutes,
+        teamTotals.minutes,
       ),
       stealPercentage: stealPercentage(
         totals.steals,
@@ -118,11 +138,15 @@ export function derivePlayerMetricSummaries(
         oppTotals.freeThrowAttempts,
         oppTotals.offensiveRebounds,
         oppTotals.turnovers,
+        totals.minutes,
+        teamTotals.minutes,
       ),
       reboundPercentage: reboundPercentage(
         totals.totalRebounds,
         teamTotals.totalRebounds,
         oppTotals.totalRebounds,
+        totals.minutes,
+        teamTotals.minutes,
       ),
       usageRate: usageRate(
         totals.fieldGoalAttempts,
@@ -131,6 +155,8 @@ export function derivePlayerMetricSummaries(
         teamTotals.fieldGoalAttempts,
         teamTotals.freeThrowAttempts,
         teamTotals.turnovers,
+        totals.minutes,
+        teamTotals.minutes,
       ),
       gameScoreTotal,
       gameScoreAverage: safeRatio(gameScoreTotal, gameScores.length),

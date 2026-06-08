@@ -1,14 +1,20 @@
 import {
+  assistPercentage,
+  blockPercentage,
   defensiveRating,
   effectiveFieldGoalPercentage,
   estimatedPossessions,
   fieldGoalPercentage,
   gameScore,
+  minutesShare,
   offensiveRating,
+  reboundPercentage,
   safeRatio,
+  stealPercentage,
   trueShootingAttempts,
   trueShootingPercentage,
   turnoverPercentage,
+  usageRate,
 } from "@/domain/metrics";
 
 describe("MVP metric formulas", () => {
@@ -44,6 +50,34 @@ describe("MVP metric formulas", () => {
       fouls: 4,
       turnovers: 3,
     })).toBeCloseTo(20.5);
+  });
+
+  it("normalizes player rate stats by on-court minutes share (Basketball-Reference)", () => {
+    // mShare = MP / (Tm MP / 5) = 5 * MP / Tm MP. With MP=40, Tm MP=240 → 0.8333.
+    expect(minutesShare(40, 240)).toBeCloseTo(0.833333);
+
+    // Each value below equals the reference 100*(...) formula divided by 100,
+    // since the app stores fractions and multiplies by 100 only at display.
+    // AST%: 100*AST/((mShare)*TmFG - FG)
+    expect(assistPercentage(6, 30, 4, 40, 240)).toBeCloseTo(0.285714);
+    // BLK%: 100*(BLK*(TmMP/5))/(MP*(OppFGA - Opp3PA))
+    expect(blockPercentage(3, 80, 20, 40, 240)).toBeCloseTo(0.06);
+    // STL%: 100*(STL*(TmMP/5))/(MP*OppPoss), OppPoss = FGA+0.44*FTA-ORB+TOV
+    expect(stealPercentage(5, 80, 20, 10, 14, 40, 240)).toBeCloseTo(0.064655);
+    // TRB%: 100*(TRB*(TmMP/5))/(MP*(TmTRB+OppTRB))
+    expect(reboundPercentage(10, 40, 42, 40, 240)).toBeCloseTo(0.146341);
+    // Usg%: 100*((FGA+0.44*FTA+TOV)*(TmMP/5))/(MP*(TmFGA+0.44*TmFTA+TmTOV))
+    expect(usageRate(12, 2, 2, 72, 21, 14, 40, 240)).toBeCloseTo(0.187485);
+  });
+
+  it("returns null when minutes are unavailable for rate stats", () => {
+    expect(minutesShare(40, 0)).toBeNull();
+    expect(minutesShare(null, 240)).toBeNull();
+    expect(assistPercentage(6, 30, 4, null, 240)).toBeNull();
+    expect(blockPercentage(3, 80, 20, 40, null)).toBeNull();
+    expect(stealPercentage(5, 80, 20, 10, 14, null, 240)).toBeNull();
+    expect(reboundPercentage(10, 40, 42, 40, 0)).toBeNull();
+    expect(usageRate(12, 2, 2, 72, 21, 14, 40, null)).toBeNull();
   });
 
   it("returns null for zero denominators", () => {

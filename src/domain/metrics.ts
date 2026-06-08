@@ -159,24 +159,55 @@ export function gameScore(input: GameScoreInput): NullableNumber {
   );
 }
 
+/**
+ * The on-court minutes share `MP / (Tm MP / 5)` used by Basketball-Reference's
+ * player rate stats (AST%, BLK%, STL%, TRB%, Usg%). Equivalent to `5 * MP / Tm MP`,
+ * i.e. the fraction of the team's available on-court time the player was on the
+ * floor. Returns null when minutes are unavailable so dependent stats degrade to
+ * "Unavailable" rather than reporting an un-normalized value.
+ */
+export function minutesShare(
+  playerMinutes: number | null | undefined,
+  teamMinutes: number | null | undefined,
+): NullableNumber {
+  if (!isFiniteNumber(playerMinutes) || !isFiniteNumber(teamMinutes)) {
+    return null;
+  }
+
+  return safeRatio(5 * playerMinutes, teamMinutes);
+}
+
 export function assistPercentage(
   assists: number | null | undefined,
   teamFieldGoals: number | null | undefined,
   playerFieldGoals: number | null | undefined,
+  playerMinutes: number | null | undefined,
+  teamMinutes: number | null | undefined,
 ): NullableNumber {
-  if (!isFiniteNumber(assists) || !isFiniteNumber(teamFieldGoals) || !isFiniteNumber(playerFieldGoals)) {
+  const share = minutesShare(playerMinutes, teamMinutes);
+
+  if (
+    !isFiniteNumber(assists) ||
+    !isFiniteNumber(teamFieldGoals) ||
+    !isFiniteNumber(playerFieldGoals) ||
+    !isFiniteNumber(share)
+  ) {
     return null;
   }
 
-  return safeRatio(assists, teamFieldGoals - playerFieldGoals);
+  return safeRatio(assists, share * teamFieldGoals - playerFieldGoals);
 }
 
 export function blockPercentage(
   blocks: number | null | undefined,
   oppFieldGoalAttempts: number | null | undefined,
   oppThreePointAttempts: number | null | undefined,
+  playerMinutes: number | null | undefined,
+  teamMinutes: number | null | undefined,
 ): NullableNumber {
-  if (!isFiniteNumber(blocks) || !isFiniteNumber(oppFieldGoalAttempts)) {
+  const share = minutesShare(playerMinutes, teamMinutes);
+
+  if (!isFiniteNumber(blocks) || !isFiniteNumber(oppFieldGoalAttempts) || !isFiniteNumber(share)) {
     return null;
   }
 
@@ -184,7 +215,7 @@ export function blockPercentage(
     ? oppFieldGoalAttempts - oppThreePointAttempts
     : oppFieldGoalAttempts;
 
-  return safeRatio(blocks, opp2PA);
+  return safeRatio(blocks, share * opp2PA);
 }
 
 export function stealPercentage(
@@ -193,11 +224,18 @@ export function stealPercentage(
   oppFreeThrowAttempts: number | null | undefined,
   oppOffensiveRebounds: number | null | undefined,
   oppTurnovers: number | null | undefined,
+  playerMinutes: number | null | undefined,
+  teamMinutes: number | null | undefined,
 ): NullableNumber {
-  if (!isFiniteNumber(steals)) {
+  const share = minutesShare(playerMinutes, teamMinutes);
+
+  if (!isFiniteNumber(steals) || !isFiniteNumber(share)) {
     return null;
   }
 
+  // Opponent possessions use the simplified single-team estimate (see
+  // estimatedPossessions); the full Dean Oliver averaged formula is an
+  // intentional, documented deviation from the reference glossary.
   const oppPossessions = estimatedPossessions({
     fieldGoalAttempts: oppFieldGoalAttempts,
     freeThrowAttempts: oppFreeThrowAttempts,
@@ -205,19 +243,32 @@ export function stealPercentage(
     turnovers: oppTurnovers,
   });
 
-  return safeRatio(steals, oppPossessions);
+  if (!isFiniteNumber(oppPossessions)) {
+    return null;
+  }
+
+  return safeRatio(steals, share * oppPossessions);
 }
 
 export function reboundPercentage(
   playerRebounds: number | null | undefined,
   teamRebounds: number | null | undefined,
   oppRebounds: number | null | undefined,
+  playerMinutes: number | null | undefined,
+  teamMinutes: number | null | undefined,
 ): NullableNumber {
-  if (!isFiniteNumber(playerRebounds) || !isFiniteNumber(teamRebounds) || !isFiniteNumber(oppRebounds)) {
+  const share = minutesShare(playerMinutes, teamMinutes);
+
+  if (
+    !isFiniteNumber(playerRebounds) ||
+    !isFiniteNumber(teamRebounds) ||
+    !isFiniteNumber(oppRebounds) ||
+    !isFiniteNumber(share)
+  ) {
     return null;
   }
 
-  return safeRatio(playerRebounds, teamRebounds + oppRebounds);
+  return safeRatio(playerRebounds, share * (teamRebounds + oppRebounds));
 }
 
 export function usageRate(
@@ -227,20 +278,24 @@ export function usageRate(
   teamFieldGoalAttempts: number | null | undefined,
   teamFreeThrowAttempts: number | null | undefined,
   teamTurnovers: number | null | undefined,
+  playerMinutes: number | null | undefined,
+  teamMinutes: number | null | undefined,
 ): NullableNumber {
   const playerUsage = trueShootingAttempts(playerFieldGoalAttempts, playerFreeThrowAttempts);
   const teamUsage = trueShootingAttempts(teamFieldGoalAttempts, teamFreeThrowAttempts);
+  const share = minutesShare(playerMinutes, teamMinutes);
 
   if (
     !isFiniteNumber(playerUsage) ||
     !isFiniteNumber(playerTurnovers) ||
     !isFiniteNumber(teamUsage) ||
-    !isFiniteNumber(teamTurnovers)
+    !isFiniteNumber(teamTurnovers) ||
+    !isFiniteNumber(share)
   ) {
     return null;
   }
 
-  return safeRatio(playerUsage + playerTurnovers, teamUsage + teamTurnovers);
+  return safeRatio(playerUsage + playerTurnovers, share * (teamUsage + teamTurnovers));
 }
 
 export function estimatedPossessions(input: PossessionInput): NullableNumber {

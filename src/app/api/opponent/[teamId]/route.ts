@@ -57,6 +57,10 @@ function findTopUsage(
 ): OpponentPlayerSummary | null {
   if (players.length === 0) return null;
   const teamTotals = totalsFromTeamStat(teamStat);
+  const teamMinutes = players.reduce<number | null>((sum, p) => {
+    if (sum === null || p.minutes == null) return null;
+    return sum + p.minutes;
+  }, 0);
 
   let bestPlayer: PlayerGameStat | null = null;
   let bestRate: number | null = null;
@@ -69,6 +73,8 @@ function findTopUsage(
       teamTotals.fieldGoalAttempts,
       teamTotals.freeThrowAttempts,
       teamTotals.turnovers,
+      p.minutes,
+      teamMinutes,
     );
     if (rate !== null && (bestRate === null || rate > bestRate)) {
       bestRate = rate;
