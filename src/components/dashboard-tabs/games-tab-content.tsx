@@ -298,27 +298,23 @@ function UpcomingGameDetail({
   match: Match;
   myTeamId: string;
 }) {
-  const [scouting, setScouting] = React.useState<OpponentScoutData | null>(
-    null,
-  );
-  const [loading, setLoading] = React.useState(true);
-  const [fetchError, setFetchError] = React.useState<string | null>(null);
-
   const opponentTeamId =
     match.homeTeamId === myTeamId ? match.awayTeamId : match.homeTeamId;
 
+  // The component is keyed by match id in the parent, so it remounts with this
+  // initial state whenever the selected match changes — no in-effect resets.
+  const [scouting, setScouting] = React.useState<OpponentScoutData | null>(
+    null,
+  );
+  const [loading, setLoading] = React.useState(Boolean(opponentTeamId));
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
+
   React.useEffect(() => {
-    if (!opponentTeamId) {
-      setLoading(false);
-      setFetchError("Opponent team ID is unavailable.");
-      return;
-    }
+    if (!opponentTeamId) return;
 
-    setLoading(true);
-    setFetchError(null);
-    setScouting(null);
+    const controller = new AbortController();
 
-    fetch(`/api/opponent/${opponentTeamId}`)
+    fetch(`/api/opponent/${opponentTeamId}`, { signal: controller.signal })
       .then((r) => r.json() as Promise<OpponentApiResponse>)
       .then((response) => {
         if (response.ok) {
@@ -327,9 +323,22 @@ function UpcomingGameDetail({
           setFetchError(response.error.message);
         }
       })
-      .catch(() => setFetchError("Failed to load scouting data."))
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setFetchError("Failed to load scouting data.");
+      })
       .finally(() => setLoading(false));
+
+    return () => controller.abort();
   }, [opponentTeamId]);
+
+  if (!opponentTeamId) {
+    return (
+      <div className="rounded-md border p-3 text-sm text-destructive">
+        Opponent team ID is unavailable.
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-3">
@@ -383,7 +392,7 @@ function UpcomingGameDetail({
 // ── GamesTabContent ────────────────────────────────────────────────────────
 
 export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
-  const finishedGames = data?.derived.games ?? [];
+  const finishedGames = React.useMemo(() => data?.derived.games ?? [], [data]);
   const myTeamId = data?.team.id ?? "";
 
   // Filter upcoming: remove games where opponentName is null (all-star exhibitions
@@ -599,6 +608,7 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
         <CardContent>
           {selectedUpcomingMatch ? (
             <UpcomingGameDetail
+              key={selectedUpcomingMatch.id}
               match={selectedUpcomingMatch}
               myTeamId={myTeamId}
             />
