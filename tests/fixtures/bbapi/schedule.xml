@@ -7,7 +7,7 @@
       <score>88</score>
       <score>80</score>
     </match>
-    <match id="9002" start="2026-06-08 18:00:00" type="league">
+    <match id="9002" start="2099-06-08 18:00:00" type="league">
       <homeTeam id="300"><teamName>Opponent Two</teamName></homeTeam>
       <awayTeam id="100"><teamName>Test Club</teamName></awayTeam>
     </match>
