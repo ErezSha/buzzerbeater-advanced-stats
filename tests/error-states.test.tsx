@@ -7,16 +7,26 @@ describe("dashboard error states", () => {
   });
 
   it("shows a specific authorization error from the dashboard API", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      json: async () => ({
-        ok: false,
-        error: {
-          code: "NotAuthorized",
-          message: "BBAPI rejected the configured login or security code.",
-          retryable: false,
-        },
-      }),
-    } as Response);
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+
+      if (url.includes("/api/credentials")) {
+        return Promise.resolve({
+          json: async () => ({ configured: true, source: "env" }),
+        } as Response);
+      }
+
+      return Promise.resolve({
+        json: async () => ({
+          ok: false,
+          error: {
+            code: "NotAuthorized",
+            message: "BBAPI rejected the configured login or security code.",
+            retryable: false,
+          },
+        }),
+      } as Response);
+    });
 
     render(<AppShell />);
 

@@ -46,6 +46,30 @@ export function getBbapiConfig(env: BbapiEnv = process.env): BbapiConfig {
   });
 }
 
+/**
+ * Reads BBAPI credentials from the environment without throwing.
+ *
+ * Returns `null` when either credential is missing, so callers can fall back to
+ * another source (e.g. the encrypted credentials cookie in production). Unlike
+ * {@link getBbapiConfig}, this never throws a {@link BbapiError}.
+ */
+export function readBbapiConfigFromEnv(
+  env: BbapiEnv = process.env,
+): BbapiConfig | null {
+  const login = normalizeEnvValue(env.BB_LOGIN);
+  const securityCode = normalizeEnvValue(env.BB_SECURITY_CODE);
+
+  if (login === null || securityCode === null) {
+    return null;
+  }
+
+  return Object.freeze({
+    login,
+    securityCode,
+    secondTeam: env.BB_SECOND_TEAM === "1",
+  });
+}
+
 export function getPublicBbapiConfigStatus(
   env: BbapiEnv = process.env,
 ): PublicBbapiConfigStatus {

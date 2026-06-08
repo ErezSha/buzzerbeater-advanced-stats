@@ -11,6 +11,7 @@ export type BbapiEndpointName =
 
 export type BbapiErrorCode =
   | "ConfigurationError"
+  | "CredentialsRequired"
   | "HttpError"
   | "NetworkError"
   | "XmlParseError"
@@ -57,6 +58,15 @@ export function createConfigurationError(missingKeys: string[]): BbapiError {
   return new BbapiError({
     code: "ConfigurationError",
     message: `Missing server BBAPI configuration: ${missingKeys.join(", ")}.`,
+    retryable: false,
+  });
+}
+
+export function createCredentialsRequiredError(): BbapiError {
+  return new BbapiError({
+    code: "CredentialsRequired",
+    message:
+      "BuzzerBeater credentials are required. Enter your login and access code to continue.",
     retryable: false,
   });
 }

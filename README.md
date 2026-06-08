@@ -32,6 +32,17 @@ BB_SECOND_TEAM=
 
 `BB_SECOND_TEAM` is optional. Set it to `1` only if you want BBAPI to use a second team.
 
+### Production / Vercel credentials
+
+On a deployed instance there is no `.env.local`. Instead, leave `BB_LOGIN`/`BB_SECURITY_CODE`
+unset and enter your login and read-only access code through the app's sign-in form. The server
+verifies them against BBAPI and stores them in a Secure, httpOnly cookie that is AES-256-GCM
+encrypted with `CREDENTIALS_SECRET`. Use the in-app **Sign out** button to clear them.
+
+Set `CREDENTIALS_SECRET` to a long random string in the Vercel project's environment variables.
+Credential resolution is env-first: when `BB_LOGIN`/`BB_SECURITY_CODE` are present they win and the
+cookie path is never used, so local development with `.env.local` is unchanged.
+
 ## Dev Up
 
 Start the Next.js dev server:

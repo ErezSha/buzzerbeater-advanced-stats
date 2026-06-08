@@ -1,7 +1,9 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
-import { AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
+import { CredentialsForm } from "@/components/credentials-form";
 import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
 import { DashboardTabs } from "@/components/dashboard-tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -12,6 +14,53 @@ import { formatDateTime } from "@/lib/format";
 
 export function AppShell() {
   const dashboard = useDashboardData();
+  const [credentialsSource, setCredentialsSource] = React.useState<
+    "env" | "cookie" | "none" | null
+  >(null);
+  // True from a successful credentials submit until the follow-up dashboard
+  // load resolves, so we can swap the form for a loading state immediately
+  // instead of leaving the form up while the error clears.
+  const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const needsCredentials =
+    dashboard.error?.code === "CredentialsRequired" && !isSigningIn;
+  const isLoading = dashboard.isLoading || isSigningIn;
+
+  const loadCredentialsStatus = React.useCallback(async () => {
+    try {
+      const response = await fetch("/api/credentials");
+      const status = (await response.json()) as { source?: string };
+      return (status.source as "env" | "cookie" | "none") ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const source = await loadCredentialsStatus();
+      if (!cancelled) {
+        setCredentialsSource(source);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadCredentialsStatus, needsCredentials]);
+
+  const handleSignOut = React.useCallback(async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } finally {
+      setCredentialsSource(await loadCredentialsStatus());
+      // Re-fetch the dashboard; with the cookie cleared this surfaces the
+      // CredentialsRequired gate again.
+      await dashboard.refresh();
+    }
+  }, [dashboard, loadCredentialsStatus]);
+
   const team = dashboard.data?.team;
   const season =
     dashboard.data?.matches.find((match) => match.season)?.season ?? "Current";
@@ -72,61 +121,89 @@ export function AppShell() {
             >
               Scout Player
             </Link>
+            {credentialsSource === "cookie" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleSignOut()}
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                Sign out
+              </Button>
+            ) : null}
             <ThemeToggle />
           </div>
         </header>
 
-        {dashboard.error ? (
-          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-            <AlertTriangle
-              className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
-              aria-hidden="true"
-            />
-            <div>
-              <div className="font-medium">{dashboard.error.code}</div>
-              <div className="text-muted-foreground">
-                {dashboard.error.message}
+        {needsCredentials ? (
+          <CredentialsForm
+            onSaved={() => {
+              setIsSigningIn(true);
+              void (async () => {
+                try {
+                  setCredentialsSource(await loadCredentialsStatus());
+                  await dashboard.refresh();
+                } finally {
+                  setIsSigningIn(false);
+                }
+              })();
+            }}
+          />
+        ) : (
+          <>
+            {dashboard.error && !isSigningIn ? (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                <AlertTriangle
+                  className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+                  aria-hidden="true"
+                />
+                <div>
+                  <div className="font-medium">{dashboard.error.code}</div>
+                  <div className="text-muted-foreground">
+                    {dashboard.error.message}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        ) : null}
+            ) : null}
 
-        <Card>
-          <CardContent className="p-3 sm:p-4">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div>
-                <div className="text-xs uppercase text-muted-foreground">
-                  Team
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <div className="text-xs uppercase text-muted-foreground">
+                      Team
+                    </div>
+                    <div className="mt-1 font-semibold">
+                      {isLoading ? (
+                        <Skeleton className="h-5 w-40" />
+                      ) : (
+                        (team?.name ?? "Awaiting BBAPI data")
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase text-muted-foreground">
+                      Data Source
+                    </div>
+                    <div className="mt-1 font-semibold">Server-side BBAPI</div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase text-muted-foreground">
+                      Last Updated
+                    </div>
+                    <div className="mt-1 font-semibold">
+                      {formatDateTime(
+                        dashboard.refreshedAt ?? dashboard.data?.refreshedAt,
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-1 font-semibold">
-                  {dashboard.isLoading ? (
-                    <Skeleton className="h-5 w-40" />
-                  ) : (
-                    (team?.name ?? "Awaiting BBAPI data")
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs uppercase text-muted-foreground">
-                  Data Source
-                </div>
-                <div className="mt-1 font-semibold">Server-side BBAPI</div>
-              </div>
-              <div>
-                <div className="text-xs uppercase text-muted-foreground">
-                  Last Updated
-                </div>
-                <div className="mt-1 font-semibold">
-                  {formatDateTime(
-                    dashboard.refreshedAt ?? dashboard.data?.refreshedAt,
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <DashboardTabs data={dashboard.data} isLoading={dashboard.isLoading} />
+            <DashboardTabs data={dashboard.data} isLoading={isLoading} />
+          </>
+        )}
       </div>
     </main>
   );

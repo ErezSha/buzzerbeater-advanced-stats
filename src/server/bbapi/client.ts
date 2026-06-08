@@ -1,4 +1,4 @@
-import { getBbapiConfig, type BbapiConfig } from "@/server/bbapi/config";
+import type { BbapiConfig } from "@/server/bbapi/config";
 import {
   BbapiError,
   BbapiEndpointName,
@@ -43,7 +43,7 @@ export function createBbapiClient(
 
 class DefaultBbapiClient implements BbapiClient {
   #baseUrl: string;
-  #config: BbapiConfig;
+  #config: BbapiConfig | null;
   #cookieHeader: string | null = null;
   #fetcher: BbapiFetch;
   #loggedIn = false;
@@ -51,8 +51,21 @@ class DefaultBbapiClient implements BbapiClient {
 
   constructor(options: CreateBbapiClientOptions) {
     this.#baseUrl = options.baseUrl ?? BBAPI_BASE_URL;
-    this.#config = options.config ?? getBbapiConfig();
+    this.#config = options.config ?? null;
     this.#fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
+  }
+
+  async #resolveConfig(): Promise<BbapiConfig> {
+    if (this.#config) {
+      return this.#config;
+    }
+
+    // Dynamic import keeps the `next/headers` dependency (pulled in by the
+    // credentials resolver) out of contexts that always pass an explicit config
+    // — notably the unit tests, which run outside the Next request runtime.
+    const { resolveBbapiConfig } = await import("@/server/bbapi/credentials");
+    this.#config = await resolveBbapiConfig();
+    return this.#config;
   }
 
   async login(): Promise<void> {
@@ -71,10 +84,11 @@ class DefaultBbapiClient implements BbapiClient {
   }
 
   async #performLogin(): Promise<void> {
+    const config = await this.#resolveConfig();
     const params: BbapiRequestParams = {
-      login: this.#config.login,
-      code: this.#config.securityCode,
-      secondteam: this.#config.secondTeam ? 1 : undefined,
+      login: config.login,
+      code: config.securityCode,
+      secondteam: config.secondTeam ? 1 : undefined,
     };
 
     await this.#request("login.aspx", params);

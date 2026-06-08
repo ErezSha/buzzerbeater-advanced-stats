@@ -8,17 +8,27 @@ describe("home page scaffold", () => {
   });
 
   it("renders the dashboard shell without BBAPI credentials", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      json: async () => ({
-        ok: true,
-        data: dashboardViewModelFixture,
-        refreshedAt: dashboardViewModelFixture.refreshedAt,
-        cacheStatus: {
-          source: "fresh-cache",
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+
+      if (url.includes("/api/credentials")) {
+        return Promise.resolve({
+          json: async () => ({ configured: true, source: "env" }),
+        } as Response);
+      }
+
+      return Promise.resolve({
+        json: async () => ({
+          ok: true,
+          data: dashboardViewModelFixture,
           refreshedAt: dashboardViewModelFixture.refreshedAt,
-        },
-      }),
-    } as Response);
+          cacheStatus: {
+            source: "fresh-cache",
+            refreshedAt: dashboardViewModelFixture.refreshedAt,
+          },
+        }),
+      } as Response);
+    });
 
     render(<Home />);
 
