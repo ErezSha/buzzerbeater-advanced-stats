@@ -76,11 +76,31 @@ describe("BBAPI XML adapters", () => {
         season: "72",
         opponentName: "Opponent One",
         status: "finished",
+        type: "league.rs",
       },
       {
         id: "9002",
         opponentName: "Opponent Two",
         status: "scheduled",
+        type: "league.rs",
+      },
+      {
+        id: "9003",
+        opponentName: "Playoff Opponent",
+        status: "finished",
+        type: "league.quarterfinal",
+      },
+      {
+        id: "9004",
+        opponentName: "Semi Opponent",
+        status: "finished",
+        type: "league.semifinal",
+      },
+      {
+        id: "9005",
+        opponentName: "Final Opponent",
+        status: "finished",
+        type: "league.final",
       },
     ]);
   });

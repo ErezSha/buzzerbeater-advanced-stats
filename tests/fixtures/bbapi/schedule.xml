@@ -1,15 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <bbapi version="1">
   <schedule retrieved="2026-06-05" season="72" teamid="100">
-    <match id="9001" start="2026-06-01 18:00:00" type="league">
+    <match id="9001" start="2026-06-01 18:00:00" type="league.rs">
       <homeTeam id="100"><teamName>Test Club</teamName></homeTeam>
       <awayTeam id="200"><teamName>Opponent One</teamName></awayTeam>
       <score>88</score>
       <score>80</score>
     </match>
-    <match id="9002" start="2099-06-08 18:00:00" type="league">
+    <match id="9002" start="2099-06-08 18:00:00" type="league.rs">
       <homeTeam id="300"><teamName>Opponent Two</teamName></homeTeam>
       <awayTeam id="100"><teamName>Test Club</teamName></awayTeam>
+    </match>
+    <match id="9003" start="2026-06-02 18:00:00" type="league.quarterfinal">
+      <homeTeam id="100"><teamName>Test Club</teamName></homeTeam>
+      <awayTeam id="400"><teamName>Playoff Opponent</teamName></awayTeam>
+    </match>
+    <match id="9004" start="2026-06-03 18:00:00" type="league.semifinal">
+      <homeTeam id="500"><teamName>Semi Opponent</teamName></homeTeam>
+      <awayTeam id="100"><teamName>Test Club</teamName></awayTeam>
+    </match>
+    <match id="9005" start="2026-06-04 18:00:00" type="league.final">
+      <homeTeam id="100"><teamName>Test Club</teamName></homeTeam>
+      <awayTeam id="600"><teamName>Final Opponent</teamName></awayTeam>
     </match>
   </schedule>
 </bbapi>

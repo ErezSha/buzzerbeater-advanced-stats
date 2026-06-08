@@ -129,7 +129,13 @@ export async function refreshLeagueDataFull(
 }
 
 function isLeagueMatch(type: string | null | undefined): boolean {
-  return type === "league.rs" || type === "league.rs.tv";
+  return (
+    type === "league.rs" ||
+    type === "league.rs.tv" ||
+    type === "league.quarterfinal" ||
+    type === "league.semifinal" ||
+    type === "league.final"
+  );
 }
 
 async function fetchAndCache(

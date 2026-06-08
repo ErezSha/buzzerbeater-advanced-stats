@@ -4,8 +4,11 @@
 
 | type | Description | Include in stats? |
 |---|---|---|
-| `league.rs` | Regular season league game | Yes (default) |
-| `league.rs.tv` | Regular season TV game | Yes (default) |
+| `league.rs` | Regular season league game | Yes |
+| `league.rs.tv` | Regular season TV game | Yes |
+| `league.quarterfinal` | League quarterfinal playoff game | Yes |
+| `league.semifinal` | League semifinal playoff game | Yes |
+| `league.final` | League final playoff game | Yes |
 | `cup` | Domestic cup | Yes (default) |
 | `bbm` | BuzzerBeater cross-league match | Yes (default) |
 | `friendly` | Scrimmage | **No** (excluded by default) |
@@ -14,7 +17,9 @@
 | `pl.po` | Private league playoffs | **No** (excluded by default) |
 | `pl.poneutral` | Private league playoffs (neutral) | **No** (excluded by default) |
 
-Filtering is implemented in `src/server/data/refresh-dashboard-data.ts` via `isStatMatch()`.
+Playoff types (`league.quarterfinal`, `league.semifinal`, `league.final`) confirmed from season 71 schedule data.
+
+Filtering is implemented in `src/server/data/refresh-league-data-full.ts` via `isLeagueMatch()` and in `src/server/data/refresh-dashboard-data.ts` via `isStatMatch()`.
 `teamstats.aspx` independently only counts official league games (not friendlies or private league).
 
 ## teamstats.aspx
