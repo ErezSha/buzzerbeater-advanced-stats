@@ -36,4 +36,4 @@ Thumbs.db
 # Local app data
 .data/
 /data/
-cache/
+/cache/
