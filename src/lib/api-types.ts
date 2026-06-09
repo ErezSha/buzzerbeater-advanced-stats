@@ -94,6 +94,11 @@ export interface LeagueViewModel {
   players: LeagueSegmentedPlayers;
   tier: LeagueDataTier;
   /**
+   * The signed-in user's own team id, so the client can highlight their players
+   * among the league-wide rows. Resolved from teaminfo.aspx during the refresh.
+   */
+  ownTeamId?: string | null;
+  /**
    * Teams whose season stats could not be refreshed because they have a match
    * in progress (teamstats.aspx is locked mid-simulation). Their rows may be
    * missing (lightweight tier) or omit season-stat fields (full tier).

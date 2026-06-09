@@ -180,6 +180,7 @@ export function LeagueTabContent() {
   const [segment, setSegment] = React.useState<LeagueSegment>("all");
 
   const tier = data?.tier ?? "lightweight";
+  const ownTeamId = data?.ownTeamId ?? null;
 
   // The table renders no seasonStat-derived columns today, so segment-specific
   // seasonStat handling lives entirely in the data layer (seasonStat is only
@@ -534,18 +535,34 @@ export function LeagueTabContent() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell, j) => (
-                  <TableCell
-                    key={cell.id}
-                    className={cn(j === 0 && stickyColumn)}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {table.getRowModel().rows.map((row) => {
+              const isOwnTeam =
+                ownTeamId != null && row.original.teamId === ownTeamId;
+              return (
+                <TableRow
+                  key={row.id}
+                  className={cn(
+                    isOwnTeam &&
+                      "bg-primary/10 hover:bg-primary/15 dark:bg-primary/[18%] dark:hover:bg-primary/[25%]",
+                  )}
+                >
+                  {row.getVisibleCells().map((cell, j) => (
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        j === 0 && stickyColumn,
+                        isOwnTeam && j === 0 && "border-l-2 border-primary",
+                      )}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
 

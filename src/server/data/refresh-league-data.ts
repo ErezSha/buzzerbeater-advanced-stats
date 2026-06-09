@@ -1,12 +1,14 @@
 import { parseLeagueTeamStats } from "@/server/bbapi/adapters/league-team-stats";
 import { parseRoster } from "@/server/bbapi/adapters/roster";
 import { parseStandings } from "@/server/bbapi/adapters/standings";
+import { parseTeamInfo } from "@/server/bbapi/adapters/team-info";
 import { createBbapiClient, type BbapiClient } from "@/server/bbapi/client";
 import { isBbapiError } from "@/server/bbapi/errors";
 import type { BbapiXmlDocument } from "@/server/bbapi/xml";
 import {
   CACHE_TTLS,
   LEAGUE_CACHE_KEY,
+  RAW_CACHE_KEYS,
   RAW_LEAGUE_CACHE_KEYS,
   leagueDataTtlMs,
 } from "@/server/cache/cache-keys";
@@ -28,14 +30,20 @@ export async function refreshLeagueData(
   const cache = options.cache ?? getCacheStore();
 
   try {
-    // standings.aspx without params returns the logged-in user's league
-    const standingsDoc = await fetchAndCache(
-      client,
-      cache,
-      "standings.aspx",
-      RAW_LEAGUE_CACHE_KEYS.standings,
-    );
+    // standings.aspx without params returns the logged-in user's league, and
+    // teaminfo.aspx returns the logged-in user's own team — used to highlight
+    // their players among the league-wide rows.
+    const [standingsDoc, teamInfoDoc] = await Promise.all([
+      fetchAndCache(
+        client,
+        cache,
+        "standings.aspx",
+        RAW_LEAGUE_CACHE_KEYS.standings,
+      ),
+      fetchAndCache(client, cache, "teaminfo.aspx", RAW_CACHE_KEYS.teamInfo),
+    ]);
     const teams = parseStandings(standingsDoc);
+    const ownTeamId = parseTeamInfo(teamInfoDoc).id;
 
     // Phase 1: fetch all teams' data in parallel
     const teamData = await Promise.all(
@@ -120,6 +128,7 @@ export async function refreshLeagueData(
     const viewModel: LeagueViewModel = {
       players: { all: allPlayers, regular: allPlayers, playoff: [] },
       tier: "lightweight",
+      ownTeamId,
       ...(incompleteTeams.length > 0 ? { incompleteTeams } : {}),
     };
 

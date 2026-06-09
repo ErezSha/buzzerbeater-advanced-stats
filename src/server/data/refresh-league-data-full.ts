@@ -2,6 +2,7 @@ import { parseBoxScore } from "@/server/bbapi/adapters/box-score";
 import { parseRoster } from "@/server/bbapi/adapters/roster";
 import { parseSchedule } from "@/server/bbapi/adapters/schedule";
 import { parseStandings } from "@/server/bbapi/adapters/standings";
+import { parseTeamInfo } from "@/server/bbapi/adapters/team-info";
 import { parseTeamStats } from "@/server/bbapi/adapters/team-stats";
 import { createBbapiClient, type BbapiClient } from "@/server/bbapi/client";
 import { isBbapiError } from "@/server/bbapi/errors";
@@ -35,14 +36,20 @@ export async function refreshLeagueDataFull(
   const cache = options.cache ?? getCacheStore();
 
   try {
-    // standings.aspx without params returns the logged-in user's league
-    const standingsDoc = await fetchAndCache(
-      client,
-      cache,
-      "standings.aspx",
-      RAW_LEAGUE_CACHE_KEYS.standings,
-    );
+    // standings.aspx without params returns the logged-in user's league, and
+    // teaminfo.aspx returns the logged-in user's own team — used to highlight
+    // their players among the league-wide rows.
+    const [standingsDoc, teamInfoDoc] = await Promise.all([
+      fetchAndCache(
+        client,
+        cache,
+        "standings.aspx",
+        RAW_LEAGUE_CACHE_KEYS.standings,
+      ),
+      fetchAndCache(client, cache, "teaminfo.aspx", RAW_CACHE_KEYS.teamInfo),
+    ]);
     const teams = parseStandings(standingsDoc);
+    const ownTeamId = parseTeamInfo(teamInfoDoc).id;
 
     const teamSegments = await Promise.all(
       teams.map(async ({ teamId, teamName }) => {
@@ -156,6 +163,7 @@ export async function refreshLeagueDataFull(
     const viewModel: LeagueViewModel = {
       players,
       tier: "full",
+      ownTeamId,
       ...(incompleteTeams.length > 0 ? { incompleteTeams } : {}),
     };
 

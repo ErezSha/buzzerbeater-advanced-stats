@@ -105,6 +105,8 @@ class LeagueFixtureClient implements BbapiClient {
     this.requests.push({ endpoint, params });
 
     switch (endpoint) {
+      case "teaminfo.aspx":
+        return fixture("teaminfo.xml", endpoint);
       case "standings.aspx":
         return fixture("standings.xml", endpoint);
       case "roster.aspx":
