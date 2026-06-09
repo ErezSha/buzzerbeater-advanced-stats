@@ -150,7 +150,7 @@ async function fetchTeamStatsResilient(
       client,
       cache,
       "teamstats.aspx",
-      RAW_LEAGUE_CACHE_KEYS.teamStats(teamId),
+      RAW_LEAGUE_CACHE_KEYS.teamStatsTotals(teamId),
       params,
     );
     return { doc, inProgress: false };

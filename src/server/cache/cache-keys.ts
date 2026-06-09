@@ -13,7 +13,10 @@ export const RAW_CACHE_KEYS = Object.freeze({
 export const RAW_LEAGUE_CACHE_KEYS = Object.freeze({
   standings: "raw/league/standings",
   roster: (teamId: string) => `raw/league/roster/${teamId}`,
+  // per-game breakdown (full tier, no mode param)
   teamStats: (teamId: string) => `raw/league/teamstats/${teamId}`,
+  // aggregated season totals (lightweight tier, mode=totals)
+  teamStatsTotals: (teamId: string) => `raw/league/teamstats/totals/${teamId}`,
   schedule: (teamId: string) => `raw/league/schedule/${teamId}`,
 });
 
