@@ -3,9 +3,10 @@ import {
   LEAGUE_CACHE_KEY,
   LEAGUE_FULL_CACHE_KEY,
 } from "@/server/cache/cache-keys";
-import { getCacheStore } from "@/server/cache/get-cache-store";
 import type { CacheStore } from "@/server/cache/cache-store";
+import type { BbapiClient } from "@/server/bbapi/client";
 import { refreshLeagueData } from "@/server/data/refresh-league-data";
+import { getRequestContext } from "@/server/data/request-context";
 
 export interface LoadLeagueDataResult {
   data: LeagueViewModel;
@@ -14,8 +15,20 @@ export interface LoadLeagueDataResult {
 }
 
 export async function loadLeagueData(
-  cache: CacheStore = getCacheStore(),
+  cache?: CacheStore,
 ): Promise<LoadLeagueDataResult> {
+  // No injected cache means a production request: resolve the signed-in account
+  // so the read is authenticated and the cache is scoped to that account.
+  // standings.aspx returns the *logged-in user's* league, so an unscoped cache
+  // would otherwise hand one user's league to another.
+  let client: BbapiClient | undefined;
+
+  if (!cache) {
+    const context = await getRequestContext();
+    cache = context.cache;
+    client = context.client;
+  }
+
   const fullCached = await cache.get<{ data: LeagueViewModel; refreshedAt: string }>(
     LEAGUE_FULL_CACHE_KEY,
   );
@@ -32,6 +45,6 @@ export async function loadLeagueData(
     return { ...lightCached, cacheSource: "lightweight-cache" };
   }
 
-  const result = await refreshLeagueData({ cache });
+  const result = await refreshLeagueData({ cache, client });
   return { ...result, cacheSource: "refreshed" };
 }

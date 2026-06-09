@@ -6,14 +6,13 @@ import type {
 } from "@/lib/api-types";
 import { parseBoxScore } from "@/server/bbapi/adapters/box-score";
 import { parseSchedule } from "@/server/bbapi/adapters/schedule";
-import { createBbapiClient } from "@/server/bbapi/client";
 import { isBbapiError } from "@/server/bbapi/errors";
 import { toApiError } from "@/server/data/api-errors";
+import { getRequestContext } from "@/server/data/request-context";
 import { usageRate } from "@/domain/metrics";
 import { totalsFromTeamStat } from "@/domain/derive-utils";
 import type { BoxScore, Match, PlayerGameStat, TeamGameStat } from "@/domain/types";
 import { CACHE_TTLS, RAW_CACHE_KEYS } from "@/server/cache/cache-keys";
-import { getCacheStore } from "@/server/cache/get-cache-store";
 import type { BbapiXmlDocument } from "@/server/bbapi/xml";
 
 export const runtime = "nodejs";
@@ -146,8 +145,7 @@ export async function GET(
 ): Promise<NextResponse<OpponentApiResponse>> {
   try {
     const { teamId } = await context.params;
-    const cache = getCacheStore();
-    const client = createBbapiClient();
+    const { cache, client } = await getRequestContext();
 
     try {
       // Fetch the opponent's schedule (as if they are the "own" team)

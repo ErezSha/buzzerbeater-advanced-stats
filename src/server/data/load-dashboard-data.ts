@@ -1,11 +1,11 @@
 import type { NormalizedBbapiData } from "@/domain/types";
 import type { CacheStatus } from "@/lib/api-types";
 import { DASHBOARD_CACHE_KEY } from "@/server/cache/cache-keys";
-import { getCacheStore } from "@/server/cache/get-cache-store";
 import {
   refreshDashboardData,
   type RefreshDashboardDataOptions,
 } from "@/server/data/refresh-dashboard-data";
+import { getRequestContext } from "@/server/data/request-context";
 
 export interface LoadedDashboardData {
   data: NormalizedBbapiData;
@@ -19,7 +19,18 @@ export interface LoadDashboardDataOptions extends RefreshDashboardDataOptions {
 export async function loadDashboardData(
   options: LoadDashboardDataOptions = {},
 ): Promise<LoadedDashboardData> {
-  const cache = options.cache ?? getCacheStore();
+  // Tests inject an explicit cache (and client); production callers don't, so
+  // we resolve the signed-in account here. This both gates the read on
+  // authentication and scopes the cache to the account, so a cache hit can't
+  // serve one user's dashboard to another.
+  let cache = options.cache;
+  let client = options.client;
+
+  if (!cache) {
+    const context = await getRequestContext();
+    cache = context.cache;
+    client = client ?? context.client;
+  }
 
   if (!options.forceRefresh) {
     const cached = await cache.get<NormalizedBbapiData>(DASHBOARD_CACHE_KEY);
@@ -37,7 +48,7 @@ export async function loadDashboardData(
 
   const data = await refreshDashboardData({
     cache,
-    client: options.client,
+    client,
   });
 
   return {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { PlayerAnalysisApiResponse } from "@/lib/api-types";
 import { analyzeSinglePlayer } from "@/server/data/analyze-single-player";
 import { toApiError } from "@/server/data/api-errors";
+import { getRequestContext } from "@/server/data/request-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,11 @@ export async function GET(
 ): Promise<NextResponse<PlayerAnalysisApiResponse>> {
   try {
     const { playerId } = await context.params;
-    const data = await analyzeSinglePlayer(playerId);
+    const { cache, client } = await getRequestContext();
+    const data = await analyzeSinglePlayer(playerId, {
+      cacheStore: cache,
+      client,
+    });
 
     return NextResponse.json({
       ok: true,
