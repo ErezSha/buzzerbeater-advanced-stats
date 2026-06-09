@@ -47,8 +47,10 @@ describe("dashboard data orchestration", () => {
 
     expect(data.team).toMatchObject({ id: "100", name: "Test Club" });
     expect(data.players).toHaveLength(1);
-    expect(data.matches).toHaveLength(2);
-    expect(data.boxScores).toHaveLength(1);
+    // schedule.xml has 5 matches; 4 are finished stat matches (9001 rs +
+    // 9003/9004/9005 playoffs), 9002 is a future regular-season game.
+    expect(data.matches).toHaveLength(5);
+    expect(data.boxScores).toHaveLength(4);
     expect(data.derived.players[0]).toMatchObject({
       playerId: "501",
       gameScoreAverage: expect.any(Number),
@@ -62,6 +64,9 @@ describe("dashboard data orchestration", () => {
       "roster.aspx",
       "schedule.aspx",
       "teamstats.aspx",
+      "boxscore.aspx",
+      "boxscore.aspx",
+      "boxscore.aspx",
       "boxscore.aspx",
     ]);
     expect(client.loggedOut).toBe(true);
@@ -126,7 +131,6 @@ class FixtureBbapiClient implements BbapiClient {
       case "teamstats.aspx":
         return fixture("teamstats.xml", endpoint);
       case "boxscore.aspx":
-        expect(params).toMatchObject({ matchid: "9001" });
         return fixture("boxscore.xml", endpoint);
       default:
         throw new Error(`Unexpected endpoint: ${endpoint}`);

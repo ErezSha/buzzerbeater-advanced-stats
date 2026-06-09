@@ -1,7 +1,8 @@
 import { del, get, set } from "idb-keyval";
 import type { LeagueViewModel } from "@/lib/api-types";
 
-export const LEAGUE_CACHE_SCHEMA_VERSION = 1;
+// v2: players changed from a flat array to segmented { all, regular, playoff }.
+export const LEAGUE_CACHE_SCHEMA_VERSION = 2;
 export const LEAGUE_IDB_CACHE_KEY = "bbas:league";
 
 export interface CachedLeague {

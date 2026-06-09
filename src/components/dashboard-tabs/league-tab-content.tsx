@@ -30,9 +30,10 @@ import {
   TableRow,
   stickyColumn,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLeagueData } from "@/components/dashboard/use-league-data";
 import type { LeaguePlayerMetricSummary } from "@/domain/types";
-import type { LeagueDataTier } from "@/lib/api-types";
+import type { LeagueDataTier, LeagueSegment } from "@/lib/api-types";
 import { formatInteger, formatNumber, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -176,16 +177,21 @@ export function LeagueTabContent() {
   ]);
   const [minGames, setMinGames] = React.useState(0);
   const [minMinutes, setMinMinutes] = React.useState(0);
+  const [segment, setSegment] = React.useState<LeagueSegment>("all");
 
   const tier = data?.tier ?? "lightweight";
 
+  // The table renders no seasonStat-derived columns today, so segment-specific
+  // seasonStat handling lives entirely in the data layer (seasonStat is only
+  // populated for the regular segment). If season-stat columns are ever added,
+  // they must render for the `regular` segment only.
   const rows = React.useMemo(() => {
-    const players = data?.players ?? [];
+    const players = data?.players?.[segment] ?? [];
     return players.filter((p) => {
       if (p.games < minGames) return false;
       return (p.minutes ?? 0) >= minMinutes;
     });
-  }, [data, minGames, minMinutes]);
+  }, [data, segment, minGames, minMinutes]);
 
   const leaders = React.useMemo(() => buildLeaderMap(rows), [rows]);
 
@@ -373,8 +379,10 @@ export function LeagueTabContent() {
     );
   }
 
-  const { pageIndex, pageSize } = table.getState().pagination;
+  const { pageIndex } = table.getState().pagination;
   const pageCount = table.getPageCount();
+  const playoffEmpty =
+    segment === "playoff" && (data?.players.playoff.length ?? 0) === 0;
 
   return (
     <Card>
@@ -385,7 +393,11 @@ export function LeagueTabContent() {
             <CardDescription>
               Advanced stats for all players across all 16 teams.
               {tier === "lightweight" && (
-                <> STL% and BLK% require the full data fetch.</>
+                <>
+                  {" "}
+                  STL%, BLK%, and the playoff/combined splits require the full
+                  data fetch.
+                </>
               )}
             </CardDescription>
           </div>
@@ -410,6 +422,19 @@ export function LeagueTabContent() {
       </CardHeader>
       <CardContent className="grid gap-3">
         <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
+          <Tabs
+            value={segment}
+            onValueChange={(value) => {
+              setSegment(value as LeagueSegment);
+              table.setPageIndex(0);
+            }}
+          >
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="regular">Regular Season</TabsTrigger>
+              <TabsTrigger value="playoff">Playoffs</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <label className="flex items-center gap-2">
             Min games
             <input
@@ -439,7 +464,37 @@ export function LeagueTabContent() {
           <Badge variant="outline">{rows.length} players</Badge>
         </div>
 
-        <Table>
+        {playoffEmpty ? (
+          <div className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-md border border-dashed p-6 text-center">
+            <div>
+              <div className="font-medium">No playoff games yet</div>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                {tier === "lightweight"
+                  ? "Playoff and combined splits are only available after fetching the full stats."
+                  : "No league playoff box scores were found for this season."}
+              </p>
+            </div>
+            {tier === "lightweight" && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isFetchingFull}
+                onClick={fetchFull}
+              >
+                {isFetchingFull ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Fetching…
+                  </>
+                ) : (
+                  "Fetch full stats"
+                )}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <>
+            <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -508,6 +563,8 @@ export function LeagueTabContent() {
             </Button>
           </div>
         </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

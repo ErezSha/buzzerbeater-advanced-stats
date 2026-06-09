@@ -75,8 +75,16 @@ export type OpponentApiResponse =
 
 export type LeagueDataTier = "lightweight" | "full";
 
+export type LeagueSegment = "all" | "regular" | "playoff";
+
+export interface LeagueSegmentedPlayers {
+  all: LeaguePlayerMetricSummary[];
+  regular: LeaguePlayerMetricSummary[];
+  playoff: LeaguePlayerMetricSummary[];
+}
+
 export interface LeagueViewModel {
-  players: LeaguePlayerMetricSummary[];
+  players: LeagueSegmentedPlayers;
   tier: LeagueDataTier;
 }
 

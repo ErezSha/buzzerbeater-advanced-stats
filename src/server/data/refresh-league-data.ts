@@ -7,6 +7,7 @@ import {
   CACHE_TTLS,
   LEAGUE_CACHE_KEY,
   RAW_LEAGUE_CACHE_KEYS,
+  leagueDataTtlMs,
 } from "@/server/cache/cache-keys";
 import type { CacheStore } from "@/server/cache/cache-store";
 import { getCacheStore } from "@/server/cache/get-cache-store";
@@ -107,11 +108,17 @@ export async function refreshLeagueData(
       },
     );
 
+    // Lightweight tier is teamstats-based (regular-season only, no box scores
+    // to partition). Mirror the regular-season list into `all` so the default
+    // view is never empty; playoffs require the full fetch.
     const refreshedAt = new Date().toISOString();
-    const viewModel: LeagueViewModel = { players: allPlayers, tier: "lightweight" };
+    const viewModel: LeagueViewModel = {
+      players: { all: allPlayers, regular: allPlayers, playoff: [] },
+      tier: "lightweight",
+    };
 
     await cache.set(LEAGUE_CACHE_KEY, { data: viewModel, refreshedAt }, {
-      ttlMs: CACHE_TTLS.normalizedLeagueMs,
+      ttlMs: leagueDataTtlMs(),
     });
 
     return { data: viewModel, refreshedAt };

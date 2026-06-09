@@ -11,16 +11,18 @@
 | `league.final` | League final playoff game | Yes |
 | `cup` | Domestic cup | Yes (default) |
 | `bbm` | BuzzerBeater cross-league match | Yes (default) |
+| `bbm.playoff` | BuzzerBeater cross-league playoff match | Yes (default) |
 | `friendly` | Scrimmage | **No** (excluded by default) |
 | `pl.rs` | Private league regular season | **No** (excluded by default) |
 | `pl.rsneutral` | Private league regular season (neutral) | **No** (excluded by default) |
 | `pl.po` | Private league playoffs | **No** (excluded by default) |
 | `pl.poneutral` | Private league playoffs (neutral) | **No** (excluded by default) |
 
-Playoff types (`league.quarterfinal`, `league.semifinal`, `league.final`) confirmed from season 71 schedule data.
+Playoff types (`league.quarterfinal`, `league.semifinal`, `league.final`) and `bbm.playoff` confirmed from season 71 live data. The All-Star game appears with a literal `unknown` type — treat it (and anything else unrecognized) as excluded.
 
 Filtering is implemented in `src/server/data/refresh-league-data-full.ts` via `isLeagueMatch()` and in `src/server/data/refresh-dashboard-data.ts` via `isStatMatch()`.
-`teamstats.aspx` independently only counts official league games (not friendlies or private league).
+
+**`teamstats.aspx` excludes playoffs.** Verified against season 71: a team that played 21 regular-season league games plus 4 league playoff games (`league.quarterfinal`/`semifinal`/`final`) reports max `games = 21` in teamstats totals. The in-game UI's season stats page agrees. So `teamstats` season stats are **regular-season-only** — they cannot represent a playoff or combined ("all") segment. Only per-game `boxscore.aspx` data can be partitioned by match type.
 
 ## teamstats.aspx
 
@@ -54,7 +56,7 @@ Filtering is implemented in `src/server/data/refresh-league-data-full.ts` via `i
 
 Notes:
 - Can be fetched for any team via `?teamid=<id>` (no authentication required beyond login)
-- `games` counts only official league games (`league.rs`, `league.rs.tv`) — scrimmages and private league are excluded
+- `games` counts only regular-season official league games (`league.rs`, `league.rs.tv`) — scrimmages, private league, **and playoffs** are excluded (playoff exclusion verified against season 71; see Match types section above)
 - All stat fields are inside the nested `<stats>` element (not direct player attributes)
 
 ## player.aspx

@@ -11,12 +11,13 @@ import {
   LEAGUE_FULL_CACHE_KEY,
   RAW_CACHE_KEYS,
   RAW_LEAGUE_CACHE_KEYS,
+  leagueDataTtlMs,
 } from "@/server/cache/cache-keys";
 import type { CacheStore } from "@/server/cache/cache-store";
 import { getCacheStore } from "@/server/cache/get-cache-store";
 import { derivePlayerMetricSummaries } from "@/domain/derive-player-stats";
-import type { LeaguePlayerMetricSummary } from "@/domain/types";
-import type { LeagueViewModel } from "@/lib/api-types";
+import type { BoxScore, LeaguePlayerMetricSummary } from "@/domain/types";
+import type { LeagueSegmentedPlayers, LeagueViewModel } from "@/lib/api-types";
 
 export interface RefreshLeagueDataFullOptions {
   client?: BbapiClient;
@@ -39,7 +40,7 @@ export async function refreshLeagueDataFull(
     );
     const teams = parseStandings(standingsDoc);
 
-    const allPlayers = await Promise.all(
+    const teamSegments = await Promise.all(
       teams.map(async ({ teamId, teamName }) => {
         const [teamStatsDoc, rosterDoc, scheduleDoc] = await Promise.all([
           fetchAndCache(
@@ -68,11 +69,17 @@ export async function refreshLeagueDataFull(
         const players = parseRoster(rosterDoc);
         const playerSeasonStats = parseTeamStats(teamStatsDoc);
         const matches = parseSchedule(scheduleDoc, teamId);
-        const boxScores = [];
 
-        for (const match of matches.filter(
-          (m) => m.status === "finished" && isLeagueMatch(m.type),
-        )) {
+        // Partition finished league box scores by segment so we can derive
+        // regular / playoff / combined summaries separately.
+        const regularBoxScores: BoxScore[] = [];
+        const playoffBoxScores: BoxScore[] = [];
+
+        for (const match of matches) {
+          if (match.status !== "finished") continue;
+          const segment = classifyLeagueMatch(match.type);
+          if (!segment) continue;
+
           const cacheKey = RAW_CACHE_KEYS.boxScore(match.id);
           let boxScoreDoc = await cache.get<BbapiXmlDocument>(cacheKey);
 
@@ -95,22 +102,48 @@ export async function refreshLeagueDataFull(
             }
           }
 
-          boxScores.push(parseBoxScore(boxScoreDoc, match.id));
+          const boxScore = parseBoxScore(boxScoreDoc, match.id);
+          if (segment === "regular") {
+            regularBoxScores.push(boxScore);
+          } else {
+            playoffBoxScores.push(boxScore);
+          }
         }
 
-        const summaries = derivePlayerMetricSummaries(
-          players,
-          playerSeasonStats,
-          boxScores,
-        );
+        const withTeam = (
+          summaries: ReturnType<typeof derivePlayerMetricSummaries>,
+        ): LeaguePlayerMetricSummary[] =>
+          summaries.map((p) => ({ ...p, teamId, teamName }));
 
-        return summaries.map(
-          (p): LeaguePlayerMetricSummary => ({ ...p, teamId, teamName }),
-        );
+        // seasonStat (teamstats.aspx) is regular-season-only, so it is passed
+        // only to the regular segment. Playoff and All derive from box scores
+        // alone with an empty season-stat list (yielding seasonStat: null).
+        return {
+          regular: withTeam(
+            derivePlayerMetricSummaries(
+              players,
+              playerSeasonStats,
+              regularBoxScores,
+            ),
+          ),
+          playoff: withTeam(
+            derivePlayerMetricSummaries(players, [], playoffBoxScores),
+          ),
+          all: withTeam(
+            derivePlayerMetricSummaries(players, [], [
+              ...regularBoxScores,
+              ...playoffBoxScores,
+            ]),
+          ),
+        };
       }),
     );
 
-    const players: LeaguePlayerMetricSummary[] = allPlayers.flat();
+    const players: LeagueSegmentedPlayers = {
+      all: teamSegments.flatMap((s) => s.all),
+      regular: teamSegments.flatMap((s) => s.regular),
+      playoff: teamSegments.flatMap((s) => s.playoff),
+    };
     const refreshedAt = new Date().toISOString();
     const viewModel: LeagueViewModel = { players, tier: "full" };
 
@@ -118,7 +151,7 @@ export async function refreshLeagueDataFull(
       LEAGUE_FULL_CACHE_KEY,
       { data: viewModel, refreshedAt },
       {
-        ttlMs: CACHE_TTLS.normalizedLeagueMs,
+        ttlMs: leagueDataTtlMs(),
       },
     );
 
@@ -128,14 +161,22 @@ export async function refreshLeagueDataFull(
   }
 }
 
-function isLeagueMatch(type: string | null | undefined): boolean {
-  return (
-    type === "league.rs" ||
-    type === "league.rs.tv" ||
+type LeagueSegmentKind = "regular" | "playoff";
+
+// Classifies a schedule match type into the segment it belongs to, or null if
+// it should be excluded from league stats (friendly, cup, bbm, all-star, etc.).
+function classifyLeagueMatch(
+  type: string | null | undefined,
+): LeagueSegmentKind | null {
+  if (type === "league.rs" || type === "league.rs.tv") return "regular";
+  if (
     type === "league.quarterfinal" ||
     type === "league.semifinal" ||
     type === "league.final"
-  );
+  ) {
+    return "playoff";
+  }
+  return null;
 }
 
 async function fetchAndCache(
