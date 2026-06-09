@@ -421,6 +421,15 @@ export function LeagueTabContent() {
         </div>
       </CardHeader>
       <CardContent className="grid gap-3">
+        {data?.incompleteTeams && data.incompleteTeams.length > 0 && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+            <span className="font-medium">Match in progress.</span>{" "}
+            {tier === "lightweight"
+              ? "Season stats for the following teams are temporarily unavailable and their players are hidden until their game finishes: "
+              : "Season ratings for the following teams will refresh once their game finishes: "}
+            {data.incompleteTeams.map((t) => t.teamName).join(", ")}.
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
           <Tabs
             value={segment}

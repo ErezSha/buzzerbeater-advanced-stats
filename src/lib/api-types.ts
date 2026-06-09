@@ -17,6 +17,8 @@ export type ApiErrorShape = {
   code: BbapiErrorCode | "NotFound";
   message: string;
   retryable: boolean;
+  endpoint?: string;
+  bbapiMessage?: string;
 };
 
 export type DashboardApiResponse =
@@ -83,9 +85,20 @@ export interface LeagueSegmentedPlayers {
   playoff: LeaguePlayerMetricSummary[];
 }
 
+export interface LeagueIncompleteTeam {
+  teamId: string;
+  teamName: string;
+}
+
 export interface LeagueViewModel {
   players: LeagueSegmentedPlayers;
   tier: LeagueDataTier;
+  /**
+   * Teams whose season stats could not be refreshed because they have a match
+   * in progress (teamstats.aspx is locked mid-simulation). Their rows may be
+   * missing (lightweight tier) or omit season-stat fields (full tier).
+   */
+  incompleteTeams?: LeagueIncompleteTeam[];
 }
 
 export type LeagueApiResponse =

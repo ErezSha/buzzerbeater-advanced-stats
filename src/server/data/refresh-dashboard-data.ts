@@ -45,17 +45,14 @@ export async function refreshDashboardData(
           "schedule.aspx",
           RAW_CACHE_KEYS.schedule,
         ),
-        requestAndCache(
-          client,
-          cache,
-          "teamstats.aspx",
-          RAW_CACHE_KEYS.teamStats,
-        ),
+        requestTeamStatsWithFallback(client, cache),
       ]);
 
     const players = parseRoster(rosterDocument);
     const matches = parseSchedule(scheduleDocument, team.id);
-    const playerSeasonStats = parseTeamStats(teamStatsDocument);
+    const playerSeasonStats = teamStatsDocument
+      ? parseTeamStats(teamStatsDocument)
+      : [];
     const boxScores = [];
 
     for (const match of matches.filter(
@@ -74,7 +71,11 @@ export async function refreshDashboardData(
 
         boxScores.push(parseBoxScore(boxScoreDocument, match.id));
       } catch (error) {
-        if (!isBbapiError(error) || error.code !== "BoxscoreNotAvailable") {
+        if (
+          !isBbapiError(error) ||
+          (error.code !== "BoxscoreNotAvailable" &&
+            error.code !== "MatchInProgress")
+        ) {
           throw error;
         }
       }
@@ -111,6 +112,32 @@ export async function refreshDashboardData(
 function isStatMatch(type: string | null | undefined): boolean {
   if (!type) return true;
   return type !== "friendly" && !type.startsWith("pl.");
+}
+
+/**
+ * teamstats.aspx is locked by BuzzerBeater while one of the team's matches is
+ * being simulated, returning a `MatchInProgress` error. Rather than failing the
+ * entire dashboard sync, fall back to the most recent cached raw teamstats
+ * document, or skip season stats entirely if none has been cached yet.
+ */
+async function requestTeamStatsWithFallback(
+  client: BbapiClient,
+  cache: CacheStore,
+): Promise<BbapiXmlDocument | null> {
+  try {
+    return await requestAndCache(
+      client,
+      cache,
+      "teamstats.aspx",
+      RAW_CACHE_KEYS.teamStats,
+    );
+  } catch (error) {
+    if (!isBbapiError(error) || error.code !== "MatchInProgress") {
+      throw error;
+    }
+
+    return cache.get<BbapiXmlDocument>(RAW_CACHE_KEYS.teamStats);
+  }
 }
 
 async function requestAndCache(

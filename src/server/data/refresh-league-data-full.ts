@@ -17,7 +17,11 @@ import type { CacheStore } from "@/server/cache/cache-store";
 import { getCacheStore } from "@/server/cache/get-cache-store";
 import { derivePlayerMetricSummaries } from "@/domain/derive-player-stats";
 import type { BoxScore, LeaguePlayerMetricSummary } from "@/domain/types";
-import type { LeagueSegmentedPlayers, LeagueViewModel } from "@/lib/api-types";
+import type {
+  LeagueIncompleteTeam,
+  LeagueSegmentedPlayers,
+  LeagueViewModel,
+} from "@/lib/api-types";
 
 export interface RefreshLeagueDataFullOptions {
   client?: BbapiClient;
@@ -42,14 +46,8 @@ export async function refreshLeagueDataFull(
 
     const teamSegments = await Promise.all(
       teams.map(async ({ teamId, teamName }) => {
-        const [teamStatsDoc, rosterDoc, scheduleDoc] = await Promise.all([
-          fetchAndCache(
-            client,
-            cache,
-            "teamstats.aspx",
-            RAW_LEAGUE_CACHE_KEYS.teamStats(teamId),
-            { teamid: teamId },
-          ),
+        const [teamStats, rosterDoc, scheduleDoc] = await Promise.all([
+          fetchTeamStatsResilient(client, cache, teamId, { teamid: teamId }),
           fetchAndCache(
             client,
             cache,
@@ -67,7 +65,9 @@ export async function refreshLeagueDataFull(
         ]);
 
         const players = parseRoster(rosterDoc);
-        const playerSeasonStats = parseTeamStats(teamStatsDoc);
+        const playerSeasonStats = teamStats.doc
+          ? parseTeamStats(teamStats.doc)
+          : [];
         const matches = parseSchedule(scheduleDoc, teamId);
 
         // Partition finished league box scores by segment so we can derive
@@ -94,7 +94,8 @@ export async function refreshLeagueDataFull(
             } catch (error) {
               if (
                 isBbapiError(error) &&
-                error.code === "BoxscoreNotAvailable"
+                (error.code === "BoxscoreNotAvailable" ||
+                  error.code === "MatchInProgress")
               ) {
                 continue;
               }
@@ -119,6 +120,9 @@ export async function refreshLeagueDataFull(
         // only to the regular segment. Playoff and All derive from box scores
         // alone with an empty season-stat list (yielding seasonStat: null).
         return {
+          teamId,
+          teamName,
+          inProgress: teamStats.inProgress,
           regular: withTeam(
             derivePlayerMetricSummaries(
               players,
@@ -139,13 +143,21 @@ export async function refreshLeagueDataFull(
       }),
     );
 
+    const incompleteTeams: LeagueIncompleteTeam[] = teamSegments
+      .filter((s) => s.inProgress)
+      .map(({ teamId, teamName }) => ({ teamId, teamName }));
+
     const players: LeagueSegmentedPlayers = {
       all: teamSegments.flatMap((s) => s.all),
       regular: teamSegments.flatMap((s) => s.regular),
       playoff: teamSegments.flatMap((s) => s.playoff),
     };
     const refreshedAt = new Date().toISOString();
-    const viewModel: LeagueViewModel = { players, tier: "full" };
+    const viewModel: LeagueViewModel = {
+      players,
+      tier: "full",
+      ...(incompleteTeams.length > 0 ? { incompleteTeams } : {}),
+    };
 
     await cache.set(
       LEAGUE_FULL_CACHE_KEY,
@@ -177,6 +189,36 @@ function classifyLeagueMatch(
     return "playoff";
   }
   return null;
+}
+
+/**
+ * teamstats.aspx is locked by BuzzerBeater while a team has a match being
+ * simulated, returning a `MatchInProgress` error. Rather than failing the whole
+ * league refresh, swallow that one error and report the team as incomplete. In
+ * the full tier season stats only feed the (currently unrendered) seasonStat
+ * field, so box-score-derived metrics for the team are unaffected.
+ */
+async function fetchTeamStatsResilient(
+  client: BbapiClient,
+  cache: CacheStore,
+  teamId: string,
+  params: Parameters<BbapiClient["requestPage"]>[1],
+): Promise<{ doc: BbapiXmlDocument | null; inProgress: boolean }> {
+  try {
+    const doc = await fetchAndCache(
+      client,
+      cache,
+      "teamstats.aspx",
+      RAW_LEAGUE_CACHE_KEYS.teamStats(teamId),
+      params,
+    );
+    return { doc, inProgress: false };
+  } catch (error) {
+    if (isBbapiError(error) && error.code === "MatchInProgress") {
+      return { doc: null, inProgress: true };
+    }
+    throw error;
+  }
 }
 
 async function fetchAndCache(

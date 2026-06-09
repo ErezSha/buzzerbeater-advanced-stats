@@ -2,6 +2,7 @@ import { parseLeagueTeamStats } from "@/server/bbapi/adapters/league-team-stats"
 import { parseRoster } from "@/server/bbapi/adapters/roster";
 import { parseStandings } from "@/server/bbapi/adapters/standings";
 import { createBbapiClient, type BbapiClient } from "@/server/bbapi/client";
+import { isBbapiError } from "@/server/bbapi/errors";
 import type { BbapiXmlDocument } from "@/server/bbapi/xml";
 import {
   CACHE_TTLS,
@@ -13,7 +14,7 @@ import type { CacheStore } from "@/server/cache/cache-store";
 import { getCacheStore } from "@/server/cache/get-cache-store";
 import { deriveLeaguePlayerMetricSummaries } from "@/server/data/derive-league-player-stats";
 import type { LeaguePlayerMetricSummary } from "@/domain/types";
-import type { LeagueViewModel } from "@/lib/api-types";
+import type { LeagueIncompleteTeam, LeagueViewModel } from "@/lib/api-types";
 
 export interface RefreshLeagueDataOptions {
   client?: BbapiClient;
@@ -39,14 +40,11 @@ export async function refreshLeagueData(
     // Phase 1: fetch all teams' data in parallel
     const teamData = await Promise.all(
       teams.map(async ({ teamId, teamName }) => {
-        const [teamStatsDoc, rosterDoc] = await Promise.all([
-          fetchAndCache(
-            client,
-            cache,
-            "teamstats.aspx",
-            RAW_LEAGUE_CACHE_KEYS.teamStats(teamId),
-            { teamid: teamId, mode: "totals" },
-          ),
+        const [teamStats, rosterDoc] = await Promise.all([
+          fetchTeamStatsResilient(client, cache, teamId, {
+            teamid: teamId,
+            mode: "totals",
+          }),
           fetchAndCache(
             client,
             cache,
@@ -59,11 +57,18 @@ export async function refreshLeagueData(
         return {
           teamId,
           teamName,
-          playerTotals: parseLeagueTeamStats(teamStatsDoc),
+          playerTotals: teamStats.doc
+            ? parseLeagueTeamStats(teamStats.doc)
+            : [],
           roster: parseRoster(rosterDoc),
+          inProgress: teamStats.inProgress,
         };
       }),
     );
+
+    const incompleteTeams: LeagueIncompleteTeam[] = teamData
+      .filter((t) => t.inProgress)
+      .map(({ teamId, teamName }) => ({ teamId, teamName }));
 
     // Phase 2: compute league total rebounds so we can estimate opponent rebounds
     // per team. TRB% formula = player_reb / (team_reb + opp_reb). Since the
@@ -115,6 +120,7 @@ export async function refreshLeagueData(
     const viewModel: LeagueViewModel = {
       players: { all: allPlayers, regular: allPlayers, playoff: [] },
       tier: "lightweight",
+      ...(incompleteTeams.length > 0 ? { incompleteTeams } : {}),
     };
 
     await cache.set(LEAGUE_CACHE_KEY, { data: viewModel, refreshedAt }, {
@@ -124,6 +130,35 @@ export async function refreshLeagueData(
     return { data: viewModel, refreshedAt };
   } finally {
     await client.logout();
+  }
+}
+
+/**
+ * teamstats.aspx is locked by BuzzerBeater while a team has a match being
+ * simulated, returning a `MatchInProgress` error. Rather than failing the whole
+ * league refresh, swallow that one error and report the team as incomplete so
+ * the rest of the league still renders.
+ */
+async function fetchTeamStatsResilient(
+  client: BbapiClient,
+  cache: CacheStore,
+  teamId: string,
+  params: Parameters<BbapiClient["requestPage"]>[1],
+): Promise<{ doc: BbapiXmlDocument | null; inProgress: boolean }> {
+  try {
+    const doc = await fetchAndCache(
+      client,
+      cache,
+      "teamstats.aspx",
+      RAW_LEAGUE_CACHE_KEYS.teamStats(teamId),
+      params,
+    );
+    return { doc, inProgress: false };
+  } catch (error) {
+    if (isBbapiError(error) && error.code === "MatchInProgress") {
+      return { doc: null, inProgress: true };
+    }
+    throw error;
   }
 }
 

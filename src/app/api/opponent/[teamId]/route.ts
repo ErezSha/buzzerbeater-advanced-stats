@@ -180,7 +180,8 @@ export async function GET(
           } catch (error) {
             if (
               isBbapiError(error) &&
-              error.code === "BoxscoreNotAvailable"
+              (error.code === "BoxscoreNotAvailable" ||
+                error.code === "MatchInProgress")
             ) {
               games.push(buildEmptyGameLog(match));
               continue;

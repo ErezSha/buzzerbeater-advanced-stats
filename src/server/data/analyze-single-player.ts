@@ -78,7 +78,11 @@ export async function analyzeSinglePlayer(
           boxScores.push(boxScore);
         }
       } catch (error) {
-        if (!isBbapiError(error) || error.code !== "BoxscoreNotAvailable") {
+        if (
+          !isBbapiError(error) ||
+          (error.code !== "BoxscoreNotAvailable" &&
+            error.code !== "MatchInProgress")
+        ) {
           throw error;
         }
       }

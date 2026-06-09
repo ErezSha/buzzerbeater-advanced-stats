@@ -17,6 +17,7 @@ export type BbapiErrorCode =
   | "XmlParseError"
   | "NotAuthorized"
   | "BoxscoreNotAvailable"
+  | "MatchInProgress"
   | "ServerError"
   | "UnknownBbapiError";
 
@@ -128,6 +129,14 @@ export function createBbapiResponseError(
         code: "BoxscoreNotAvailable",
         endpoint,
         message: "Box score is not available yet.",
+        retryable: false,
+        bbapiMessage,
+      });
+    case "MatchInProgress":
+      return new BbapiError({
+        code: "MatchInProgress",
+        endpoint,
+        message: "Box score unavailable because there's a match in progress.",
         retryable: false,
         bbapiMessage,
       });

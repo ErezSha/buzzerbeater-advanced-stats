@@ -63,7 +63,7 @@ export interface Match {
   opponentName?: string | null;
   homeScore?: number | null;
   awayScore?: number | null;
-  status: "scheduled" | "finished" | "unknown";
+  status: "scheduled" | "in_progress" | "finished" | "unknown";
   type?: string | null;
 }
 
