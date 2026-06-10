@@ -14,6 +14,7 @@ import {
 import {
   assistPercentage,
   blockPercentage,
+  detectFeat,
   gameScore,
   reboundPercentage,
   safeRatio,
@@ -35,6 +36,8 @@ export function derivePlayerMetricSummaries(
   const gameScoresByPlayer = new Map<string, number[]>();
   const teamTotalsByPlayer = new Map<string, ReturnType<typeof emptyTotals>>();
   const oppTotalsByPlayer = new Map<string, ReturnType<typeof emptyTotals>>();
+  const plusMinusByPlayer = new Map<string, number>();
+  const featsByPlayer = new Map<string, { dd: number; td: number; qd: number; fiveX5: number }>();
 
   for (const boxScore of boxScores) {
     const homeTeamTotals = totalsFromTeamStat(boxScore.homeTeam);
@@ -69,6 +72,22 @@ export function derivePlayerMetricSummaries(
         scores.push(score);
         gameScoresByPlayer.set(stat.playerId, scores);
       }
+
+      if (stat.plusMinus !== null && stat.plusMinus !== undefined) {
+        plusMinusByPlayer.set(
+          stat.playerId,
+          (plusMinusByPlayer.get(stat.playerId) ?? 0) + stat.plusMinus,
+        );
+      }
+
+      const feat = detectFeat(stat);
+      const feats = featsByPlayer.get(stat.playerId) ?? { dd: 0, td: 0, qd: 0, fiveX5: 0 };
+      featsByPlayer.set(stat.playerId, {
+        dd: feats.dd + (feat.isDoubleDouble ? 1 : 0),
+        td: feats.td + (feat.isTripleDouble ? 1 : 0),
+        qd: feats.qd + (feat.isQuadrupleDouble ? 1 : 0),
+        fiveX5: feats.fiveX5 + (feat.isFiveByFive ? 1 : 0),
+      });
 
       if (stat.teamId && (homeTeamId || awayTeamId)) {
         const isHome = stat.teamId === homeTeamId;
@@ -160,6 +179,11 @@ export function derivePlayerMetricSummaries(
       ),
       gameScoreTotal,
       gameScoreAverage: safeRatio(gameScoreTotal, gameScores.length),
+      plusMinus: plusMinusByPlayer.get(player.id) ?? null,
+      doubleDoubles: featsByPlayer.get(player.id)?.dd ?? 0,
+      tripleDoubles: featsByPlayer.get(player.id)?.td ?? 0,
+      quadrupleDoubles: featsByPlayer.get(player.id)?.qd ?? 0,
+      fiveByFives: featsByPlayer.get(player.id)?.fiveX5 ?? 0,
       seasonStat,
     };
   });

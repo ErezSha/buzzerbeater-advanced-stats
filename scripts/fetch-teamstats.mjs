@@ -120,62 +120,75 @@ checkBbapiError(loginDoc);
 console.log("Login OK.\n");
 
 try {
-  // -------------------------------------------------------------------------
-  // 1. teamstats.aspx — own team (no params)
-  // -------------------------------------------------------------------------
-  console.log("=== teamstats.aspx (own team) ===");
-  const ownStatsXml = await bbRequest("teamstats.aspx");
+  if (false) {
+    // -------------------------------------------------------------------------
+    // 1. teamstats.aspx — own team (no params)
+    // -------------------------------------------------------------------------
+    console.log("=== teamstats.aspx (own team) ===");
+    const ownStatsXml = await bbRequest("teamstats.aspx");
+    console.log("--- Raw XML ---");
+    console.log(ownStatsXml);
+    const ownStatsDoc = parseXml(ownStatsXml);
+    checkBbapiError(ownStatsDoc);
+    console.log("\n--- Parsed JSON ---");
+    console.log(JSON.stringify(ownStatsDoc, null, 2));
+
+    // -------------------------------------------------------------------------
+    // 2. teamstats.aspx — target team
+    // -------------------------------------------------------------------------
+    if (teamId) {
+      console.log(`\n=== teamstats.aspx?teamid=${teamId} ===`);
+      const targetStatsXml = await bbRequest("teamstats.aspx", {
+        teamid: teamId,
+      });
+      console.log("--- Raw XML ---");
+      console.log(targetStatsXml);
+      const targetStatsDoc = parseXml(targetStatsXml);
+      checkBbapiError(targetStatsDoc);
+      console.log("\n--- Parsed JSON ---");
+      console.log(JSON.stringify(targetStatsDoc, null, 2));
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. schedule.aspx — target team, to inspect match types
+    // -------------------------------------------------------------------------
+    console.log(`\n=== schedule.aspx?teamid=${teamId} ===`);
+    const scheduleXml = await bbRequest("schedule.aspx", { teamid: teamId });
+    console.log("--- Raw XML ---");
+    console.log(scheduleXml);
+    const scheduleDoc = parseXml(scheduleXml);
+    checkBbapiError(scheduleDoc);
+
+    const matches = scheduleDoc?.bbapi?.schedule?.match ?? [];
+    console.log(`\n--- Match type summary (${matches.length} matches) ---`);
+    const typeCounts = {};
+    for (const match of matches) {
+      const type = match.type ?? "(no type)";
+      typeCounts[type] = (typeCounts[type] ?? 0) + 1;
+    }
+    for (const [type, count] of Object.entries(typeCounts)) {
+      console.log(`  ${type}: ${count}`);
+    }
+
+    console.log("\n--- All matches ---");
+    for (const match of matches) {
+      const id = match.id ?? match.matchid ?? "?";
+      const type = match.type ?? "(no type)";
+      const date = match.date ?? match.start ?? "?";
+      const home = match.homeTeam?.teamName ?? match.homeTeam?.name ?? "?";
+      const away = match.awayTeam?.teamName ?? match.awayTeam?.name ?? "?";
+      console.log(`  [${id}] ${date}  type=${type}  ${home} vs ${away}`);
+    }
+  }
+
+  console.log("=== boxscore.aspx (own team) ===");
+  const ownStatsXml = await bbRequest("boxscore.aspx");
   console.log("--- Raw XML ---");
   console.log(ownStatsXml);
   const ownStatsDoc = parseXml(ownStatsXml);
   checkBbapiError(ownStatsDoc);
-  console.log("\n--- Parsed JSON ---");
-  console.log(JSON.stringify(ownStatsDoc, null, 2));
-
-  // -------------------------------------------------------------------------
-  // 2. teamstats.aspx — target team
-  // -------------------------------------------------------------------------
-  if (teamId) {
-    console.log(`\n=== teamstats.aspx?teamid=${teamId} ===`);
-    const targetStatsXml = await bbRequest("teamstats.aspx", { teamid: teamId });
-    console.log("--- Raw XML ---");
-    console.log(targetStatsXml);
-    const targetStatsDoc = parseXml(targetStatsXml);
-    checkBbapiError(targetStatsDoc);
-    console.log("\n--- Parsed JSON ---");
-    console.log(JSON.stringify(targetStatsDoc, null, 2));
-  }
-
-  // -------------------------------------------------------------------------
-  // 3. schedule.aspx — target team, to inspect match types
-  // -------------------------------------------------------------------------
-  console.log(`\n=== schedule.aspx?teamid=${teamId} ===`);
-  const scheduleXml = await bbRequest("schedule.aspx", { teamid: teamId });
-  console.log("--- Raw XML ---");
-  console.log(scheduleXml);
-  const scheduleDoc = parseXml(scheduleXml);
-  checkBbapiError(scheduleDoc);
-
-  const matches = scheduleDoc?.bbapi?.schedule?.match ?? [];
-  console.log(`\n--- Match type summary (${matches.length} matches) ---`);
-  const typeCounts = {};
-  for (const match of matches) {
-    const type = match.type ?? "(no type)";
-    typeCounts[type] = (typeCounts[type] ?? 0) + 1;
-  }
-  for (const [type, count] of Object.entries(typeCounts)) {
-    console.log(`  ${type}: ${count}`);
-  }
-
-  console.log("\n--- All matches ---");
-  for (const match of matches) {
-    const id = match.id ?? match.matchid ?? "?";
-    const type = match.type ?? "(no type)";
-    const date = match.date ?? match.start ?? "?";
-    const home = match.homeTeam?.teamName ?? match.homeTeam?.name ?? "?";
-    const away = match.awayTeam?.teamName ?? match.awayTeam?.name ?? "?";
-    console.log(`  [${id}] ${date}  type=${type}  ${home} vs ${away}`);
-  }
+  // console.log("\n--- Parsed JSON ---");
+  // console.log(JSON.stringify(ownStatsDoc, null, 2));
 } finally {
   await bbRequest("logout.aspx").catch(() => {});
   console.log("\nLogged out.");

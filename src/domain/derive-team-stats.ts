@@ -18,6 +18,7 @@ import {
   defensiveRating,
   estimatedPossessions,
   offensiveRating,
+  pythagoreanWins,
   safeRatio,
   turnoverPercentage,
 } from "@/domain/metrics";
@@ -68,10 +69,14 @@ export function deriveTeamSeasonMetrics(games: TeamGameMetrics[]): TeamSeasonMet
     { points: 0, opponentPoints: 0, wins: 0, losses: 0 },
   );
 
+  const pythWins = pythagoreanWins(totals.points, totals.opponentPoints, games.length);
+
   return {
     games: games.length,
     wins: totals.wins,
     losses: totals.losses,
+    pythagoreanWins: pythWins,
+    pythagoreanLosses: pythWins !== null ? games.length - pythWins : null,
     pointsPerGame: safeRatio(totals.points, games.length),
     opponentPointsPerGame: safeRatio(totals.opponentPoints, games.length),
     averageMargin: average(games.map((game) => game.margin)),

@@ -336,3 +336,55 @@ export function defensiveRating(
 export function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
+
+export interface FeatInput {
+  points?: number | null;
+  totalRebounds?: number | null;
+  assists?: number | null;
+  steals?: number | null;
+  blocks?: number | null;
+}
+
+export interface FeatFlags {
+  isDoubleDouble: boolean;
+  isTripleDouble: boolean;
+  isQuadrupleDouble: boolean;
+  isFiveByFive: boolean;
+}
+
+export function detectFeat(stat: FeatInput): FeatFlags {
+  const cats = [stat.points, stat.totalRebounds, stat.assists, stat.steals, stat.blocks];
+  const doubleDigits = cats.filter((v) => (v ?? 0) >= 10).length;
+  const isFiveByFive = cats.every((v) => (v ?? 0) >= 5);
+  return {
+    isDoubleDouble: doubleDigits >= 2,
+    isTripleDouble: doubleDigits >= 3,
+    isQuadrupleDouble: doubleDigits >= 4,
+    isFiveByFive,
+  };
+}
+
+// Dean Oliver's basketball exponent (Basketball on Paper, 2004), calibrated
+// against NBA seasons (~200 combined pts/game). BuzzerBeater runs higher-scoring
+// than the NBA, so this likely under-estimates separation — tune once multi-season
+// data is available. See pythagoreanWins() below.
+const PYTHAGOREAN_EXPONENT = 16.5;
+
+// Pythagorean wins: expected W-L from scoring efficiency.
+export function pythagoreanWins(
+  pointsFor: number | null | undefined,
+  pointsAgainst: number | null | undefined,
+  games: number,
+): NullableNumber {
+  if (
+    !isFiniteNumber(pointsFor) ||
+    !isFiniteNumber(pointsAgainst) ||
+    pointsFor <= 0 ||
+    pointsAgainst <= 0 ||
+    games === 0
+  ) {
+    return null;
+  }
+  const pfe = Math.pow(pointsFor, PYTHAGOREAN_EXPONENT);
+  return (games * pfe) / (pfe + Math.pow(pointsAgainst, PYTHAGOREAN_EXPONENT));
+}

@@ -7,8 +7,9 @@ import {
   useReactTable,
   type ColumnDef,
   type SortingState,
+  type VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -30,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import type { PlayerMetricSummary } from "@/domain/types";
 import type { DashboardViewModel } from "@/lib/api-types";
-import { formatInteger, formatNumber, formatPercent } from "@/lib/format";
+import { formatInteger, formatNumber, formatPercent, formatSigned } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 interface PlayersTabContentProps {
@@ -50,7 +51,12 @@ type LeaderColumnId =
   | "reboundPercentage"
   | "stealPercentage"
   | "blockPercentage"
-  | "gameScoreAverage";
+  | "gameScoreAverage"
+  | "plusMinus"
+  | "doubleDoubles"
+  | "tripleDoubles"
+  | "quadrupleDoubles"
+  | "fiveByFives";
 
 type LeaderMap = Record<LeaderColumnId, Set<string>>;
 
@@ -75,7 +81,14 @@ const leaderColumns: Array<{
   { id: "stealPercentage", getValue: (player) => player.stealPercentage },
   { id: "blockPercentage", getValue: (player) => player.blockPercentage },
   { id: "gameScoreAverage", getValue: (player) => player.gameScoreAverage },
+  { id: "plusMinus", getValue: (player) => player.plusMinus },
+  { id: "doubleDoubles", getValue: (player) => player.doubleDoubles },
+  { id: "tripleDoubles", getValue: (player) => player.tripleDoubles },
+  { id: "quadrupleDoubles", getValue: (player) => player.quadrupleDoubles },
+  { id: "fiveByFives", getValue: (player) => player.fiveByFives },
 ];
+
+const FEAT_COLUMN_IDS = new Set(["doubleDoubles", "tripleDoubles", "quadrupleDoubles", "fiveByFives"]);
 
 function buildLeaderMap(players: PlayerMetricSummary[]): LeaderMap {
   return leaderColumns.reduce((leaders, column) => {
@@ -114,10 +127,57 @@ function LeaderStat({
   return <span className={cn(isLeader && leaderValueClass)}>{value}</span>;
 }
 
+function FeatGroupHeaderRow({
+  table,
+  featsExpanded,
+  onToggle,
+}: {
+  table: ReturnType<typeof useReactTable<PlayerMetricSummary>>;
+  featsExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const visibleLeafColumns = table.getVisibleLeafColumns();
+  const featVisibleCount = visibleLeafColumns.filter((col) =>
+    FEAT_COLUMN_IDS.has(col.id),
+  ).length;
+  const nonFeatVisibleCount = visibleLeafColumns.length - featVisibleCount;
+
+  return (
+    <TableRow className="border-b-0 hover:bg-transparent">
+      {nonFeatVisibleCount > 0 && (
+        <TableHead colSpan={nonFeatVisibleCount} className="py-0" />
+      )}
+      <TableHead
+        colSpan={featVisibleCount}
+        className="py-1 text-center"
+      >
+        <button
+          className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground"
+          onClick={onToggle}
+          type="button"
+          aria-label={featsExpanded ? "Collapse feats columns" : "Expand feats columns"}
+        >
+          Feats
+          {featsExpanded ? (
+            <ChevronLeft className="h-3 w-3" aria-hidden="true" />
+          ) : (
+            <ChevronRight className="h-3 w-3" aria-hidden="true" />
+          )}
+        </button>
+      </TableHead>
+    </TableRow>
+  );
+}
+
 export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "gameScoreAverage", desc: true },
   ]);
+  const [featsExpanded, setFeatsExpanded] = React.useState(false);
+  const columnVisibility = React.useMemo<VisibilityState>(
+    () => ({ quadrupleDoubles: featsExpanded, fiveByFives: featsExpanded }),
+    [featsExpanded],
+  );
   const [activeOnly, setActiveOnly] = React.useState(true);
   const [minGames, setMinGames] = React.useState(0);
   const [minMinutes, setMinMinutes] = React.useState(0);
@@ -283,6 +343,56 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
           />
         ),
       },
+      {
+        accessorKey: "plusMinus",
+        header: "+/-",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.plusMinus.has(row.original.playerId)}
+            value={formatSigned(row.original.plusMinus)}
+          />
+        ),
+      },
+      {
+        accessorKey: "doubleDoubles",
+        header: "DD",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.doubleDoubles.has(row.original.playerId)}
+            value={formatInteger(row.original.doubleDoubles)}
+          />
+        ),
+      },
+      {
+        accessorKey: "tripleDoubles",
+        header: "TD",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.tripleDoubles.has(row.original.playerId)}
+            value={formatInteger(row.original.tripleDoubles)}
+          />
+        ),
+      },
+      {
+        accessorKey: "quadrupleDoubles",
+        header: "QD",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.quadrupleDoubles.has(row.original.playerId)}
+            value={formatInteger(row.original.quadrupleDoubles)}
+          />
+        ),
+      },
+      {
+        accessorKey: "fiveByFives",
+        header: "5×5",
+        cell: ({ row }) => (
+          <LeaderStat
+            isLeader={leaders.fiveByFives.has(row.original.playerId)}
+            value={formatInteger(row.original.fiveByFives)}
+          />
+        ),
+      },
     ],
     [leaders],
   );
@@ -292,7 +402,7 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
   const table = useReactTable({
     data: rows,
     columns,
-    state: { sorting },
+    state: { sorting, columnVisibility },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -352,6 +462,11 @@ export function PlayersTabContent({ data, isLoading }: PlayersTabContentProps) {
         ) : (
           <Table>
             <TableHeader>
+              <FeatGroupHeaderRow
+                table={table}
+                featsExpanded={featsExpanded}
+                onToggle={() => setFeatsExpanded((v) => !v)}
+              />
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header, j) => (

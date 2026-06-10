@@ -109,6 +109,7 @@ export interface PlayerGameStat {
   blocks?: number | null;
   turnovers?: number | null;
   fouls?: number | null;
+  plusMinus?: number | null;
 }
 
 export interface TeamGameStat {
@@ -186,6 +187,11 @@ export interface PlayerMetricSummary {
   usageRate: number | null;
   gameScoreTotal: number | null;
   gameScoreAverage: number | null;
+  plusMinus: number | null;
+  doubleDoubles: number;
+  tripleDoubles: number;
+  quadrupleDoubles: number;
+  fiveByFives: number;
   seasonStat?: PlayerSeasonStat | null;
 }
 
@@ -214,6 +220,8 @@ export interface TeamSeasonMetrics {
   games: number;
   wins: number;
   losses: number;
+  pythagoreanWins: number | null;
+  pythagoreanLosses: number | null;
   pointsPerGame: number | null;
   opponentPointsPerGame: number | null;
   averageMargin: number | null;

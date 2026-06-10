@@ -50,6 +50,12 @@ export function OverviewTabContent({ data, isLoading }: OverviewTabContentProps)
   const recentGames = [...data.derived.games.slice(-5)].reverse();
   const snapshotMetrics = [
     ["Record", `${team.wins}-${team.losses}`],
+    [
+      "Pyth W-L",
+      team.pythagoreanWins !== null && team.pythagoreanLosses !== null
+        ? `${formatNumber(team.pythagoreanWins)}-${formatNumber(team.pythagoreanLosses)}`
+        : "Unavailable",
+    ],
     ["ORtg", formatNumber(team.offensiveRating)],
     ["DRtg", formatNumber(team.defensiveRating)],
     ["eFG%", formatPercent(team.shooting.effectiveFieldGoalPercentage)],

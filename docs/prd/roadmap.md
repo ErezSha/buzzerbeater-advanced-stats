@@ -11,9 +11,8 @@
 - [ ] VORP (Value Over Replacement Player) — cumulative metric: (BPM - replacement_level) × minutes_share; rewards both efficiency and playing time; great for trade analysis
 - [ ] win shares
 - [ ] multi year stats
-- [ ] feats — double-double, triple-double, quadruple-double, 5-by-5
-- [ ] clutch splits — performance in games within 5 pts in final 5 mins vs. garbage time
-- [ ] capture +/- from box score API (currently in raw API response but not mapped into our types)
+- [x] feats — double-double, triple-double, quadruple-double, 5-by-5
+- [x] capture +/- from box score API (currently in raw API response but not mapped into our types)
 
 ## Play-by-Play (requires subscriber API)
 Unlocks lineup-level data: who is on the floor and when.
@@ -23,10 +22,11 @@ Unlocks lineup-level data: who is on the floor and when.
 - [ ] RAPM (ridge-regularized APM) — better stability for small samples / bench players
 - [ ] 5-man lineup efficiency — which units work together
 - [ ] shot location efficiency — efficiency by zone/distance; enables shot charts per player
+- [ ] clutch splits — performance in games within 5 pts in final 5 mins vs. garbage time
 
 ## Team & League Intelligence
 - [ ] power rankings — Elo-based, updates after every game, accounts for margin of victory
-- [ ] Pythagorean wins — expected W-L from points scored/allowed; flags over/underperforming teams
+- [x] Pythagorean wins — expected W-L from points scored/allowed; flags over/underperforming teams
 - [ ] strength of league — transfer translation model: when a player moves leagues, how do stats translate? Enables cross-league comparison
 
 ## Prediction & Betting Models

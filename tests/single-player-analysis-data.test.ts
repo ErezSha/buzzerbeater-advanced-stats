@@ -114,6 +114,11 @@ describe("single player analysis data flow", () => {
         usageRate: null,
         gameScoreTotal: null,
         gameScoreAverage: null,
+        plusMinus: null,
+        doubleDoubles: 0,
+        tripleDoubles: 0,
+        quadrupleDoubles: 0,
+        fiveByFives: 0,
       },
     });
 

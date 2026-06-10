@@ -187,6 +187,7 @@ function parsePlayerGameStat(
     blocks: readNumber(performance, "blk"),
     turnovers: readNumber(performance, "to", "tov"),
     fouls: readNumber(performance, "PF", "pf"),
+    plusMinus: readNumber(performance, "plusMinus"),
   };
 }
 
