@@ -1,8 +1,10 @@
 import type {
+  AvailabilitySummary,
   BoxScore,
   LeaguePlayerMetricSummary,
   NormalizedBbapiData,
   SinglePlayerAnalysis,
+  TeamSeasonMetrics,
 } from "@/domain/types";
 import type { BbapiErrorCode } from "@/server/bbapi/errors";
 
@@ -69,6 +71,10 @@ export interface OpponentGameLog {
 export interface OpponentScoutData {
   teamId: string;
   games: OpponentGameLog[];
+  /** Season efficiency derived from the opponent's recent box scores (recent form). */
+  efficiency: TeamSeasonMetrics | null;
+  /** Injury + game-shape availability from the opponent's roster, or null when unavailable. */
+  availability: AvailabilitySummary | null;
 }
 
 export type OpponentApiResponse =

@@ -5,14 +5,33 @@ import type {
   OpponentPlayerSummary,
 } from "@/lib/api-types";
 import { parseBoxScore } from "@/server/bbapi/adapters/box-score";
+import { parseRoster } from "@/server/bbapi/adapters/roster";
 import { parseSchedule } from "@/server/bbapi/adapters/schedule";
 import { isBbapiError } from "@/server/bbapi/errors";
 import { toApiError } from "@/server/data/api-errors";
 import { getRequestContext } from "@/server/data/request-context";
+import { deriveAvailability } from "@/domain/derive-availability";
+import {
+  deriveTeamGameMetrics,
+  deriveTeamSeasonMetrics,
+} from "@/domain/derive-team-stats";
 import { usageRate } from "@/domain/metrics";
 import { totalsFromTeamStat } from "@/domain/derive-utils";
-import type { BoxScore, Match, PlayerGameStat, TeamGameStat } from "@/domain/types";
-import { CACHE_TTLS, RAW_CACHE_KEYS } from "@/server/cache/cache-keys";
+import type {
+  AvailabilitySummary,
+  BoxScore,
+  Match,
+  PlayerGameStat,
+  TeamGameStat,
+  TeamSeasonMetrics,
+} from "@/domain/types";
+import {
+  CACHE_TTLS,
+  RAW_CACHE_KEYS,
+  RAW_LEAGUE_CACHE_KEYS,
+} from "@/server/cache/cache-keys";
+import type { BbapiClient } from "@/server/bbapi/client";
+import type { CacheStore } from "@/server/cache/cache-store";
 import type { BbapiXmlDocument } from "@/server/bbapi/xml";
 
 export const runtime = "nodejs";
@@ -139,6 +158,50 @@ function buildEmptyGameLog(match: Match): OpponentGameLog {
   };
 }
 
+/** Total minutes per player across the opponent's fetched box scores. */
+function minutesByPlayer(
+  boxScores: BoxScore[],
+  teamId: string,
+): Map<string, number> {
+  const minutes = new Map<string, number>();
+  for (const boxScore of boxScores) {
+    for (const player of boxScore.players) {
+      if (player.teamId !== teamId) continue;
+      minutes.set(
+        player.playerId,
+        (minutes.get(player.playerId) ?? 0) + (player.minutes ?? 0),
+      );
+    }
+  }
+  return minutes;
+}
+
+/**
+ * Fetch + parse the opponent's roster (one cached `roster.aspx?teamid` call) and
+ * fold injury / game-shape into an availability summary. Degrades to null on any
+ * failure — scouting must still work if the roster can't be loaded.
+ */
+async function loadOpponentAvailability(
+  client: BbapiClient,
+  cache: CacheStore,
+  teamId: string,
+  boxScores: BoxScore[],
+): Promise<AvailabilitySummary | null> {
+  try {
+    const cacheKey = RAW_LEAGUE_CACHE_KEYS.roster(teamId);
+    let rosterDoc = await cache.get<BbapiXmlDocument>(cacheKey);
+    if (!rosterDoc) {
+      rosterDoc = await client.requestPage("roster.aspx", { teamid: teamId });
+      await cache.set(cacheKey, rosterDoc, { ttlMs: CACHE_TTLS.rawPageMs });
+    }
+
+    const roster = parseRoster(rosterDoc);
+    return deriveAvailability(roster, minutesByPlayer(boxScores, teamId));
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(
   _request: Request,
   context: OpponentRouteContext,
@@ -162,6 +225,8 @@ export async function GET(
         .slice(-5);
 
       const games: OpponentGameLog[] = [];
+      const boxScores: BoxScore[] = [];
+      const playedMatches: Match[] = [];
 
       for (const match of recentMatches) {
         const cacheKey = RAW_CACHE_KEYS.boxScore(match.id);
@@ -190,9 +255,30 @@ export async function GET(
 
         const boxScore = parseBoxScore(boxScoreDoc, match.id);
         games.push(buildGameLog(match, boxScore, teamId));
+        boxScores.push(boxScore);
+        playedMatches.push(match);
       }
 
-      return NextResponse.json({ ok: true, data: { teamId, games } });
+      // Efficiency from the opponent's recent box scores (their perspective).
+      const teamGames = deriveTeamGameMetrics(
+        { id: teamId, name: "" },
+        playedMatches,
+        boxScores,
+      );
+      const efficiency: TeamSeasonMetrics | null =
+        teamGames.length > 0 ? deriveTeamSeasonMetrics(teamGames) : null;
+
+      const availability = await loadOpponentAvailability(
+        client,
+        cache,
+        teamId,
+        boxScores,
+      );
+
+      return NextResponse.json({
+        ok: true,
+        data: { teamId, games, efficiency, availability },
+      });
     } finally {
       await client.logout();
     }

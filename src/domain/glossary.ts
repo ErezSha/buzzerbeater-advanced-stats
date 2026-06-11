@@ -175,4 +175,32 @@ export const glossaryEntries: GlossaryEntry[] = [
     interpretation: "Expected wins based on scoring efficiency. Values above actual W-L suggest the team is performing better than its record; values below suggest it has been lucky.",
     availability: "Shown when season points for and against are available.",
   },
+  {
+    id: "matchup-spread",
+    name: "Spread",
+    formula: "expPts(home) − expPts(away), where expPts = ((ORtg + opp DRtg) / 2 × strength) / 100 × avg pace, plus a flat home-court bonus",
+    interpretation: "Expected winning margin, shown betting-style from your perspective (e.g. \"You -3.5\"). A symmetric efficiency blend, not a league-normalized model — treat it as a directional estimate.",
+    availability: "Shown for upcoming games once both teams have recent efficiency data.",
+  },
+  {
+    id: "matchup-total",
+    name: "Over/Under",
+    formula: "expPts(home) + expPts(away)",
+    interpretation: "Expected combined points for the game — the projected total score.",
+    availability: "Shown for upcoming games once both teams have recent efficiency data.",
+  },
+  {
+    id: "matchup-winprob",
+    name: "Win Probability",
+    formula: "Φ(expected margin / margin SD), Φ = standard normal CDF",
+    interpretation: "Chance your team wins, derived from the predicted spread. The margin SD and home-court bonus start from basketball priors and are not yet BuzzerBeater-calibrated.",
+    availability: "Shown for upcoming games once a spread can be computed.",
+  },
+  {
+    id: "strength-modifier",
+    name: "Strength Modifier",
+    formula: "clamp(form × availability): form = 1 + (avg game shape − 7) × 0.01 ; availability = 1 − injured minutes share",
+    interpretation: "Roster adjustment applied to a team's expected efficiency in the matchup forecast. Down-weights teams missing rotation players to injury or in poor game shape. Enthusiasm/effort is intentionally not modeled — it is already embedded in the efficiency ratings.",
+    availability: "Shown via the forecast; defaults to neutral (1.0) when roster data is missing.",
+  },
 ];

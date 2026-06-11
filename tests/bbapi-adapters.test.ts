@@ -36,6 +36,8 @@ describe("BBAPI XML adapters", () => {
         height: "6-5",
         salary: 12345,
         rosterStatus: "active",
+        injured: false,
+        gameShape: null,
       },
     ]);
   });

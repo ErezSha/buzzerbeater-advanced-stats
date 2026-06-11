@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<bbapi version="1">
+  <roster retrieved="2026-06-05" teamid="100">
+    <player id='49618046'>
+      <firstName>Janek</firstName>
+      <lastName>Ustav</lastName>
+      <nationality id='41'>Eesti</nationality>
+      <age>36</age>
+      <height>82</height>
+      <dmi>335400</dmi>
+      <injury>1</injury>
+
+      <salary>72440</salary>
+      <bestPosition>PF</bestPosition>
+      <seasonDrafted>53</seasonDrafted>
+      <leagueDrafted>1767</leagueDrafted>
+      <teamDrafted>123088</teamDrafted>
+      <draftPick>20</draftPick>
+      <forSale>1</forSale>
+      <skills>
+          <gameShape>7</gameShape>
+          <potential>10</potential>
+      </skills>
+    </player>
+    <player id='49550093'>
+      <firstName>Florus</firstName>
+      <lastName>Vermeire</lastName>
+      <nationality id='13'>Belgium</nationality>
+      <age>36</age>
+      <height>84</height>
+      <dmi>238100</dmi>
+      <salary>52485</salary>
+      <bestPosition>PF</bestPosition>
+      <seasonDrafted>53</seasonDrafted>
+      <leagueDrafted>896</leagueDrafted>
+      <teamDrafted>37267</teamDrafted>
+      <draftPick>3</draftPick>
+      <forSale>0</forSale>
+      <skills>
+          <gameShape>6</gameShape>
+          <potential>8</potential>
+
+      </skills>
+    </player>
+  </roster>
+</bbapi>

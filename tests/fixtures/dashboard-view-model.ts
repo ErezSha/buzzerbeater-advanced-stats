@@ -203,6 +203,7 @@ export const dashboardViewModelFixture: DashboardViewModel = {
       offensiveReboundPercentage: 0.27,
       freeThrowRate: 0.21,
     },
+    availability: null,
     trends: {
       games: [
         {

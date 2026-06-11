@@ -15,6 +15,7 @@ export function parseRoster(document: BbapiXmlDocument): Player[] {
     const firstName = readString(player, "firstName") ?? "";
     const lastName = readString(player, "lastName") ?? "";
     const name = [firstName, lastName].filter(Boolean).join(" ").trim();
+    const skills = childRecord(player, "skills");
 
     return {
       id: requireString(player, "unknown-player", "id", "playerid"),
@@ -24,6 +25,9 @@ export function parseRoster(document: BbapiXmlDocument): Player[] {
       height: readString(player, "height"),
       salary: readNumber(player, "salary"),
       rosterStatus: "active",
+      // roster.aspx emits <injury>N</injury> where N is weeks remaining; absent = healthy.
+      injured: (readNumber(player, "injury") ?? 0) > 0,
+      gameShape: readNumber(skills, "gameShape"),
     };
   });
 }

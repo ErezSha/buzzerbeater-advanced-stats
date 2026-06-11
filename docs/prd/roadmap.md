@@ -30,9 +30,10 @@ Unlocks lineup-level data: who is on the floor and when.
 - [ ] strength of league — transfer translation model: when a player moves leagues, how do stats translate? Enables cross-league comparison
 
 ## Prediction & Betting Models
-- [ ] game outcome prediction — efficiency differential + home court + effort margin (BB equivalent of rest/fatigue)
-- [ ] spread model — approximate Vegas line from (ORtg - opp DRtg) × pace factor
-- [ ] over/under model — (your pace + opp pace) / 2 × combined efficiency
+- [x] matchup predictor — spread, over/under, win probability from efficiency blend + home court + roster availability
+- [ ] calibrate matchup constants — fit HOME_COURT_POINTS, MARGIN_STD_DEV, REPLACEMENT_RATE to actual BB game history once a multi-season sample exists
+- [ ] salary-based replacement rate — REPLACEMENT_RATE is currently a flat 0.7 prior; in BB salary is directly skill-tied (no contracts/negotiations), so `replacement.salary / injured.salary` is a meaningful per-player proxy; DMI is a secondary, noisier alternative; requires identifying the next-in-rotation player as the replacement
+- [ ] cross-league matchup adjustment — the matchup predictor assumes both teams play in the same league, so their ORtg/DRtg are on the same scale; for cup games vs. opponents from a different league level the stats are not comparable: a lower-league team's ORtg is inflated (easy scoring vs. weak defenses) and their DRtg is deflated (weak opponents don't score), making them look stronger than they are and skewing the forecast against the higher-league team; blocked on "Strength of League" (transfer translation model in Team & League Intelligence)
 
 ## GM / Roster Tools
 - [ ] game plan optimizer — which BB offense/defense strategy settings correlate with efficiency vs. specific opponent types

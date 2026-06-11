@@ -19,7 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { TeamGameMetrics, Match } from "@/domain/types";
+import type {
+  AvailabilitySummary,
+  Match,
+  TeamGameMetrics,
+  TeamSeasonMetrics,
+} from "@/domain/types";
+import { predictMatchup, type MatchupTeam } from "@/domain/matchup";
 import type {
   DashboardViewModel,
   OpponentApiResponse,
@@ -291,12 +297,169 @@ function ScoutingGameRow({ g }: { g: OpponentGameLog }) {
   );
 }
 
+// ── PredictionPanel (matchup forecast) ─────────────────────────────────────
+
+/** Format a from-your-perspective margin as a betting line: favored = "You -3.5". */
+function spreadLabel(myMargin: number): string {
+  if (myMargin > 0) return `You -${formatNumber(myMargin)}`;
+  if (myMargin < 0) return `You +${formatNumber(-myMargin)}`;
+  return "Pick'em";
+}
+
+function StatCompareRow({
+  label,
+  mine,
+  theirs,
+}: {
+  label: string;
+  mine: number | null;
+  theirs: number | null;
+}) {
+  return (
+    <TableRow>
+      <TableCell className="font-medium">{label}</TableCell>
+      <TableCell className="text-right">{formatNumber(mine)}</TableCell>
+      <TableCell className="text-right">{formatNumber(theirs)}</TableCell>
+    </TableRow>
+  );
+}
+
+function PredictionPanel({
+  iAmHome,
+  ownTeam,
+  ownAvailability,
+  scouting,
+}: {
+  iAmHome: boolean;
+  ownTeam: TeamSeasonMetrics | null;
+  ownAvailability: AvailabilitySummary | null;
+  scouting: OpponentScoutData;
+}) {
+  const me: MatchupTeam = {
+    offensiveRating: ownTeam?.offensiveRating ?? null,
+    defensiveRating: ownTeam?.defensiveRating ?? null,
+    pace: ownTeam?.averagePossessions ?? null,
+    strengthModifier: ownAvailability?.strengthModifier ?? 1,
+  };
+  const opp: MatchupTeam = {
+    offensiveRating: scouting.efficiency?.offensiveRating ?? null,
+    defensiveRating: scouting.efficiency?.defensiveRating ?? null,
+    pace: scouting.efficiency?.averagePossessions ?? null,
+    strengthModifier: scouting.availability?.strengthModifier ?? 1,
+  };
+
+  const prediction = predictMatchup(
+    iAmHome ? me : opp,
+    iAmHome ? opp : me,
+  );
+
+  // Re-orient the home-relative outputs to "my" perspective.
+  const myWinProb =
+    prediction.homeWinProbability === null
+      ? null
+      : iAmHome
+        ? prediction.homeWinProbability
+        : 1 - prediction.homeWinProbability;
+  const myMargin =
+    prediction.spread === null
+      ? null
+      : iAmHome
+        ? prediction.spread
+        : -prediction.spread;
+
+  const ownInjuries = ownAvailability?.injuredPlayers ?? [];
+  const oppInjuries = scouting.availability?.injuredPlayers ?? [];
+
+  if (myMargin === null || myWinProb === null) {
+    return (
+      <div className="rounded-md border p-3 text-sm text-muted-foreground">
+        Not enough efficiency data yet to forecast this matchup — both teams need
+        recent finished games.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      <div className="rounded-md border p-3">
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Matchup forecast
+          <span className="ml-1 normal-case">({iAmHome ? "home" : "away"})</span>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+          <div>
+            <div className="text-xs text-muted-foreground">Win prob</div>
+            <div className="mt-1 text-xl font-semibold text-primary">
+              {formatPercent(myWinProb)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Spread</div>
+            <div className="mt-1 text-xl font-semibold">
+              {spreadLabel(myMargin)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Over/under</div>
+            <div className="mt-1 text-xl font-semibold">
+              {formatNumber(prediction.total)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-md border p-3">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Metric</TableHead>
+              <TableHead className="text-right">You</TableHead>
+              <TableHead className="text-right">Opp</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <StatCompareRow
+              label="ORtg"
+              mine={me.offensiveRating}
+              theirs={opp.offensiveRating}
+            />
+            <StatCompareRow
+              label="DRtg"
+              mine={me.defensiveRating}
+              theirs={opp.defensiveRating}
+            />
+            <StatCompareRow label="Pace" mine={me.pace} theirs={opp.pace} />
+          </TableBody>
+        </Table>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Opponent efficiency reflects their last {scouting.games.length}{" "}
+          competitive games; your team uses full-season form.
+        </p>
+      </div>
+
+      {(ownInjuries.length > 0 || oppInjuries.length > 0) && (
+        <div className="rounded-md border p-3 text-xs">
+          <span className="font-medium">Injuries — </span>
+          <span className="text-muted-foreground">
+            You: {ownInjuries.length > 0 ? ownInjuries.join(", ") : "none"} · Opp:{" "}
+            {oppInjuries.length > 0 ? oppInjuries.join(", ") : "none"}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UpcomingGameDetail({
   match,
   myTeamId,
+  ownTeam,
+  ownAvailability,
 }: {
   match: Match;
   myTeamId: string;
+  ownTeam: TeamSeasonMetrics | null;
+  ownAvailability: AvailabilitySummary | null;
 }) {
   const opponentTeamId =
     match.homeTeamId === myTeamId ? match.awayTeamId : match.homeTeamId;
@@ -366,6 +529,15 @@ function UpcomingGameDetail({
         <div className="rounded-md border p-3 text-sm text-destructive">
           {fetchError}
         </div>
+      )}
+
+      {scouting && !loading && (
+        <PredictionPanel
+          iAmHome={match.homeTeamId === myTeamId}
+          ownTeam={ownTeam}
+          ownAvailability={ownAvailability}
+          scouting={scouting}
+        />
       )}
 
       {scouting && !loading && scouting.games.length === 0 && (
@@ -601,7 +773,7 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
           </CardTitle>
           <CardDescription>
             {selectedUpcomingMatch
-              ? "Last 5 competitive games for this opponent."
+              ? "Matchup forecast and recent opponent form."
               : "Efficiency and four-factor summary."}
           </CardDescription>
         </CardHeader>
@@ -611,6 +783,8 @@ export function GamesTabContent({ data, isLoading }: GamesTabContentProps) {
               key={selectedUpcomingMatch.id}
               match={selectedUpcomingMatch}
               myTeamId={myTeamId}
+              ownTeam={data?.derived.team ?? null}
+              ownAvailability={data?.derived.availability ?? null}
             />
           ) : (
             <GameDetail game={selectedGame} />

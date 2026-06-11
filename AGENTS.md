@@ -30,6 +30,7 @@ Test LOGIC ONLY - there's no need to test visual pages at all
 - `docs/prd/prd-mvp.md` - MVP product requirements and implementation source of truth.
 - `docs/references/buzzerbeater-api.md` - BBAPI endpoints, auth flow, XML behavior, and errors.
 - `docs/references/buzzerbeater-schemas.md` - BBAPI types examples.
+- `docs/references/buzzer-beater-enthusiasm.md` - explanation about how "enthusiasm" works in BuzzerBeater
 - `docs/references/glossary.md` - Basketball stat definitions and formulas.
 - `docs/references/individual-ORtg-DRtg.md` - Detailed Dean Oliver individual offensive/defensive rating formulas; post-MVP.
 - `docs/references/win-shares.md` - Win Shares methodology; post-MVP.

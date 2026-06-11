@@ -17,6 +17,10 @@ export interface Player {
   height?: string | null;
   salary?: number | null;
   rosterStatus: "active" | "inactive" | "unknown";
+  /** True when roster.aspx reports the player currently injured (`<injury>1</injury>`). */
+  injured?: boolean | null;
+  /** BuzzerBeater game shape (1–10) from roster.aspx `<skills>`, or null when absent. */
+  gameShape?: number | null;
 }
 
 export interface PlayerSkills {
@@ -234,6 +238,26 @@ export interface TeamSeasonMetrics {
   freeThrowRate: number | null;
 }
 
+export interface AvailabilityPlayer {
+  playerId: string;
+  name: string;
+  /** Playing-time weight (minutes per game) used to weight the roster signals. */
+  minutes: number | null;
+  injured: boolean;
+  gameShape: number | null;
+}
+
+export interface AvailabilitySummary {
+  /** Rotation players (top by minutes) that drive the strength modifier. */
+  players: AvailabilityPlayer[];
+  /** Final strength multiplier handed to the matchup engine (clamped). */
+  strengthModifier: number;
+  /** Names of injured rotation players, for UI display. */
+  injuredPlayers: string[];
+  /** Minutes-weighted average game shape of the healthy rotation, or null. */
+  averageGameShape: number | null;
+}
+
 export interface TrendPoint {
   matchId: string;
   date: string;
@@ -256,6 +280,8 @@ export interface DerivedDashboardMetrics {
   players: PlayerMetricSummary[];
   games: TeamGameMetrics[];
   team: TeamSeasonMetrics;
+  /** Own-team roster availability (injury + game shape), or null when unavailable. */
+  availability: AvailabilitySummary | null;
   trends: {
     games: TrendPoint[];
     rollingAverages: {

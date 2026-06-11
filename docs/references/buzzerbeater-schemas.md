@@ -59,6 +59,43 @@ Notes:
 - `games` counts only regular-season official league games (`league.rs`, `league.rs.tv`) — scrimmages, private league, **and playoffs** are excluded (playoff exclusion verified against season 71; see Match types section above)
 - All stat fields are inside the nested `<stats>` element (not direct player attributes)
 
+## roster.aspx
+
+Retrieves the players belonging to a team (`?teamid=<id>`, defaults to the current user's team). Works for non-owned teams, and — unlike `player.aspx` — the `<skills>` block (including `gameShape`) is returned regardless of ownership.
+
+```xml
+<bbapi version="1">
+  <roster retrieved="2026-06-05" teamid="100">
+    <player id='49618046'>
+      <firstName>Janek</firstName>
+      <lastName>Ustav</lastName>
+      <nationality id='41'>Eesti</nationality>
+      <age>36</age>
+      <height>82</height>
+      <dmi>335400</dmi>
+      <injury>1</injury>
+      <salary>72440</salary>
+      <bestPosition>PF</bestPosition>
+      <seasonDrafted>53</seasonDrafted>
+      <leagueDrafted>1767</leagueDrafted>
+      <teamDrafted>123088</teamDrafted>
+      <draftPick>20</draftPick>
+      <forSale>1</forSale>
+      <skills>
+        <gameShape>7</gameShape>
+        <potential>10</potential>
+      </skills>
+    </player>
+    <!-- more players... -->
+  </roster>
+</bbapi>
+```
+
+Notes:
+- `<injury>N</injury>` where N is the number of weeks remaining on the injury — the element is absent for healthy players. Any non-zero value means injured. (Confirmed values: 1, 2.)
+- `<skills><gameShape>` is the BuzzerBeater game shape (1–10), available for owned and non-owned teams.
+- Adapter: `src/server/bbapi/adapters/roster.ts` → `Player[]` (maps `injured` + `gameShape`). Fixture: `tests/fixtures/bbapi/roster.xml`.
+
 ## player.aspx
 
 Live smoke check on June 7, 2026 confirmed that `player.aspx?playerid=<id>` works for transfer-market player `55713639`.
