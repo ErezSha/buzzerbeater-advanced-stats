@@ -16,6 +16,8 @@ export interface Player {
   age?: number | null;
   height?: string | null;
   salary?: number | null;
+  /** BuzzerBeater DMI (player value index) from roster.aspx `<dmi>`, or null when absent. */
+  dmi?: number | null;
   rosterStatus: "active" | "inactive" | "unknown";
   /** True when roster.aspx reports the player currently injured (`<injury>1</injury>`). */
   injured?: boolean | null;

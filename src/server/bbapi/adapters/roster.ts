@@ -24,6 +24,7 @@ export function parseRoster(document: BbapiXmlDocument): Player[] {
       age: readNumber(player, "age"),
       height: readString(player, "height"),
       salary: readNumber(player, "salary"),
+      dmi: readNumber(player, "dmi"),
       rosterStatus: "active",
       // roster.aspx emits <injury>N</injury> where N is weeks remaining; absent = healthy.
       injured: (readNumber(player, "injury") ?? 0) > 0,

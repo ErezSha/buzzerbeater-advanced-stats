@@ -35,6 +35,7 @@ describe("BBAPI XML adapters", () => {
         age: 27,
         height: "6-5",
         salary: 12345,
+        dmi: null,
         rosterStatus: "active",
         injured: false,
         gameShape: null,
