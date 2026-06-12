@@ -158,22 +158,29 @@ function buildEmptyGameLog(match: Match): OpponentGameLog {
   };
 }
 
-/** Total minutes per player across the opponent's fetched box scores. */
-function minutesByPlayer(
+/** Recent minutes per game by player across the opponent's fetched box scores. */
+function minutesPerGameByPlayer(
   boxScores: BoxScore[],
   teamId: string,
 ): Map<string, number> {
-  const minutes = new Map<string, number>();
+  const totalMinutes = new Map<string, number>();
+  const games = new Map<string, number>();
   for (const boxScore of boxScores) {
     for (const player of boxScore.players) {
       if (player.teamId !== teamId) continue;
-      minutes.set(
+      totalMinutes.set(
         player.playerId,
-        (minutes.get(player.playerId) ?? 0) + (player.minutes ?? 0),
+        (totalMinutes.get(player.playerId) ?? 0) + (player.minutes ?? 0),
       );
+      games.set(player.playerId, (games.get(player.playerId) ?? 0) + 1);
     }
   }
-  return minutes;
+  return new Map(
+    Array.from(totalMinutes.entries()).map(([playerId, minutes]) => [
+      playerId,
+      minutes / (games.get(playerId) ?? 1),
+    ]),
+  );
 }
 
 /**
@@ -196,7 +203,7 @@ async function loadOpponentAvailability(
     }
 
     const roster = parseRoster(rosterDoc);
-    return deriveAvailability(roster, minutesByPlayer(boxScores, teamId));
+    return deriveAvailability(roster, minutesPerGameByPlayer(boxScores, teamId));
   } catch {
     return null;
   }

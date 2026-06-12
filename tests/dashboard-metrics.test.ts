@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deriveDashboardMetrics } from "@/domain/aggregate";
+import type { BoxScore, Match, Player, Team } from "@/domain/types";
 import { parseBoxScore } from "@/server/bbapi/adapters/box-score";
 import { parseRoster } from "@/server/bbapi/adapters/roster";
 import { parseSchedule } from "@/server/bbapi/adapters/schedule";
@@ -54,7 +55,116 @@ describe("dashboard metric derivation", () => {
       expect.objectContaining({ code: "low-sample" }),
     );
   });
+
+  it("feeds availability with minutes per game instead of cumulative minutes", () => {
+    const team: Team = { id: "100", name: "Test Club" };
+    const players: Player[] = [
+      {
+        id: "501",
+        name: "Injured Starter",
+        rosterStatus: "active",
+        injured: true,
+        gameShape: 7,
+      },
+    ];
+    const matches: Match[] = [
+      finishedMatch("9001", "2026-06-01"),
+      finishedMatch("9002", "2026-06-08"),
+    ];
+    const boxScores: BoxScore[] = [
+      boxScore("9001", team.id, players[0].id, 20),
+      boxScore("9002", team.id, players[0].id, 20),
+    ];
+
+    const derived = deriveDashboardMetrics({
+      team,
+      players,
+      matches,
+      playerSeasonStats: [],
+      boxScores,
+      refreshedAt: "2026-06-09T00:00:00.000Z",
+    });
+
+    expect(derived.availability?.players[0]?.minutes).toBeCloseTo(20);
+    expect(derived.availability?.strengthModifier).toBeCloseTo(0.975);
+  });
 });
+
+function finishedMatch(id: string, date: string): Match {
+  return {
+    id,
+    date,
+    homeTeamId: "100",
+    awayTeamId: "200",
+    opponentName: "Opponent",
+    status: "finished",
+  };
+}
+
+function boxScore(
+  matchId: string,
+  teamId: string,
+  playerId: string,
+  minutes: number,
+): BoxScore {
+  return {
+    matchId,
+    homeTeam: {
+      matchId,
+      teamId,
+      points: 10,
+      offStrategy: null,
+      defStrategy: null,
+    },
+    awayTeam: {
+      matchId,
+      teamId: "200",
+      points: 8,
+      offStrategy: null,
+      defStrategy: null,
+    },
+    players: [
+      {
+        matchId,
+        playerId,
+        playerName: "Injured Starter",
+        teamId,
+        minutes,
+        points: 10,
+        fieldGoals: 5,
+        fieldGoalAttempts: 10,
+        freeThrowAttempts: 0,
+        offensiveRebounds: 0,
+        defensiveRebounds: 0,
+        totalRebounds: 0,
+        assists: 0,
+        steals: 0,
+        blocks: 0,
+        turnovers: 0,
+        fouls: 0,
+      },
+      {
+        matchId,
+        playerId: "opp",
+        playerName: "Opponent",
+        teamId: "200",
+        minutes,
+        points: 8,
+        fieldGoals: 4,
+        fieldGoalAttempts: 10,
+        freeThrowAttempts: 0,
+        offensiveRebounds: 0,
+        defensiveRebounds: 0,
+        totalRebounds: 0,
+        assists: 0,
+        steals: 0,
+        blocks: 0,
+        turnovers: 0,
+        fouls: 0,
+      },
+    ],
+  };
+}
 
 function fixture(fileName: string, endpoint: Parameters<typeof parseBbapiXml>[1]): BbapiXmlDocument {
   const xml = readFileSync(
