@@ -441,8 +441,8 @@ function PredictionPanel({
         <div className="rounded-md border p-3 text-xs">
           <span className="font-medium">Injuries — </span>
           <span className="text-muted-foreground">
-            You: {ownInjuries.length > 0 ? ownInjuries.join(", ") : "none"} · Opp:{" "}
-            {oppInjuries.length > 0 ? oppInjuries.join(", ") : "none"}
+            You: {ownInjuries.length > 0 ? ownInjuries.join(", ") : "none in top 8 rotation"} · Opp:{" "}
+            {oppInjuries.length > 0 ? oppInjuries.join(", ") : "none in top 8 rotation"}
           </span>
         </div>
       )}
