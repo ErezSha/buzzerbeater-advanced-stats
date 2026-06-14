@@ -15,7 +15,10 @@ import {
   assistPercentage,
   blockPercentage,
   detectFeat,
+  estimatedPossessions,
   gameScore,
+  individualDefensiveRating,
+  individualOffensiveRating,
   reboundPercentage,
   safeRatio,
   stealPercentage,
@@ -95,7 +98,13 @@ export function derivePlayerMetricSummaries(
           ...(isHome ? homeTeamTotals : awayTeamTotals),
           minutes: teamMinutesById.get(stat.teamId) ?? null,
         };
-        const oppTotals = isHome ? awayTeamTotals : homeTeamTotals;
+        // Opponent minutes (Opp MP) are needed for the individual DRtg Stop%
+        // term; recover them the same way as team minutes.
+        const oppTeamId = isHome ? awayTeamId : homeTeamId;
+        const oppTotals = {
+          ...(isHome ? awayTeamTotals : homeTeamTotals),
+          minutes: oppTeamId ? teamMinutesById.get(oppTeamId) ?? null : null,
+        };
 
         const existingTeam = teamTotalsByPlayer.get(stat.playerId) ?? emptyTotals();
         teamTotalsByPlayer.set(stat.playerId, addStatTotals(existingTeam, myTeamTotals));
@@ -176,6 +185,13 @@ export function derivePlayerMetricSummaries(
         teamTotals.turnovers,
         totals.minutes,
         teamTotals.minutes,
+      ),
+      offensiveRating: individualOffensiveRating(totals, teamTotals, oppTotals),
+      defensiveRating: individualDefensiveRating(
+        totals,
+        teamTotals,
+        oppTotals,
+        estimatedPossessions(teamTotals),
       ),
       gameScoreTotal,
       gameScoreAverage: safeRatio(gameScoreTotal, gameScores.length),

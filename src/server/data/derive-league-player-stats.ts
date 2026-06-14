@@ -99,6 +99,8 @@ export function deriveLeaguePlayerMetricSummaries(
         // Require opponent data — remain null in lightweight mode.
         stealPercentage: null,
         blockPercentage: null,
+        offensiveRating: null,
+        defensiveRating: null,
         gameScoreTotal: avgGmSc !== null ? avgGmSc * g : null,
         gameScoreAverage: avgGmSc,
         plusMinus: null,

@@ -2,19 +2,27 @@ import {
   assistPercentage,
   blockPercentage,
   defensiveRating,
+  defensiveStops,
   effectiveFieldGoalPercentage,
   estimatedPossessions,
   fieldGoalPercentage,
   gameScore,
+  individualDefensiveRating,
+  individualOffensiveRating,
+  individualTotalPossessions,
   minutesShare,
   offensiveRating,
+  pointsProduced,
   reboundPercentage,
   safeRatio,
+  scoringPossessions,
   stealPercentage,
+  stopPercentage,
   trueShootingAttempts,
   trueShootingPercentage,
   turnoverPercentage,
   usageRate,
+  type RatingStatLine,
 } from "@/domain/metrics";
 
 describe("MVP metric formulas", () => {
@@ -117,5 +125,103 @@ describe("MVP metric formulas", () => {
       fouls: 2,
       turnovers: 2,
     })).toBeNull();
+  });
+});
+
+describe("individual ORtg / DRtg (Dean Oliver)", () => {
+  // Realistic ~50-game season totals. Golden values produced by an independent
+  // transcription of docs/references/individual-ORtg-DRtg.md.
+  const player: RatingStatLine = {
+    minutes: 1000,
+    points: 500,
+    fieldGoals: 180,
+    fieldGoalAttempts: 380,
+    threePointMakes: 40,
+    freeThrows: 100,
+    freeThrowAttempts: 120,
+    offensiveRebounds: 40,
+    defensiveRebounds: 120,
+    assists: 120,
+    steals: 40,
+    blocks: 20,
+    turnovers: 80,
+    fouls: 90,
+  };
+  const team: RatingStatLine = {
+    minutes: 12000,
+    points: 8000,
+    fieldGoals: 3000,
+    fieldGoalAttempts: 6500,
+    threePointMakes: 600,
+    freeThrows: 1400,
+    freeThrowAttempts: 1900,
+    offensiveRebounds: 700,
+    defensiveRebounds: 2200,
+    assists: 1800,
+    steals: 600,
+    blocks: 350,
+    turnovers: 1100,
+    fouls: 1600,
+  };
+  const opponent: RatingStatLine = {
+    minutes: 12000,
+    points: 7600,
+    fieldGoals: 2900,
+    fieldGoalAttempts: 6400,
+    threePointMakes: 550,
+    freeThrows: 1300,
+    freeThrowAttempts: 1800,
+    offensiveRebounds: 750,
+    defensiveRebounds: 2100,
+    assists: 1700,
+    steals: 620,
+    blocks: 330,
+    turnovers: 1150,
+    fouls: 1550,
+  };
+  const teamPossessions = estimatedPossessions(team); // 7736
+
+  it("matches the reference formula building blocks", () => {
+    expect(scoringPossessions(player, team, opponent)).toBeCloseTo(227.2251, 3);
+    expect(individualTotalPossessions(player, team, opponent)).toBeCloseTo(455.0584, 3);
+    expect(pointsProduced(player, team, opponent)).toBeCloseTo(499.9787, 3);
+    expect(defensiveStops(player, team, opponent)).toBeCloseTo(269.6413, 3);
+    expect(stopPercentage(player, team, opponent, teamPossessions)).toBeCloseTo(0.418265, 5);
+  });
+
+  it("computes individual ORtg and DRtg", () => {
+    const ortg = individualOffensiveRating(player, team, opponent);
+    const drtg = individualDefensiveRating(player, team, opponent, teamPossessions);
+    expect(ortg).toBeCloseTo(109.8713, 3);
+    expect(drtg).toBeCloseTo(103.4008, 3);
+    // Sanity: both land in the plausible per-100-possessions range.
+    expect(ortg).toBeGreaterThan(80);
+    expect(ortg).toBeLessThan(130);
+    expect(drtg).toBeGreaterThan(80);
+    expect(drtg).toBeLessThan(130);
+  });
+
+  it("falls back to TRB - ORB when defensive rebounds are absent", () => {
+    const { defensiveRebounds: _drop, ...noDrb } = player;
+    const withTrb: RatingStatLine = { ...noDrb, totalRebounds: 160, offensiveRebounds: 40 };
+    expect(defensiveStops(withTrb, team, opponent)).toBeCloseTo(269.6413, 3);
+  });
+
+  it("returns null for missing inputs", () => {
+    expect(individualOffensiveRating({ ...player, fieldGoals: null }, team, opponent)).toBeNull();
+    expect(individualOffensiveRating(player, { ...team, freeThrowAttempts: null }, opponent)).toBeNull();
+    expect(scoringPossessions(player, team, { ...opponent, defensiveRebounds: null, totalRebounds: null })).toBeNull();
+    expect(individualDefensiveRating(player, team, { ...opponent, fieldGoalAttempts: null }, teamPossessions)).toBeNull();
+    expect(individualDefensiveRating(player, team, opponent, null)).toBeNull();
+  });
+
+  it("returns null for zero denominators", () => {
+    // Zero opponent FGA → DFG% undefined.
+    expect(defensiveStops(player, team, { ...opponent, fieldGoalAttempts: 0 })).toBeNull();
+    // Zero team possessions → DRtg and Stop% undefined.
+    expect(stopPercentage(player, team, opponent, 0)).toBeNull();
+    expect(individualDefensiveRating(player, team, opponent, 0)).toBeNull();
+    // Player with no FGA → ORtg undefined.
+    expect(individualOffensiveRating({ ...player, fieldGoalAttempts: 0 }, team, opponent)).toBeNull();
   });
 });

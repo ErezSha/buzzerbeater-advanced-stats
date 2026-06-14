@@ -333,6 +333,451 @@ export function defensiveRating(
   );
 }
 
+// ---------------------------------------------------------------------------
+// Individual Offensive / Defensive Rating (Dean Oliver, Basketball on Paper)
+//
+// Box-score estimates — no play-by-play needed. See
+// docs/references/individual-ORtg-DRtg.md for the source formulas. All three
+// operands are season-cumulative stat lines (the player, the player's team, and
+// the opponents faced); ratings are computed from the aggregated totals, the
+// same way Basketball-Reference produces season ORtg/DRtg.
+//
+// MP / Tm MP here are BuzzerBeater's per-position-summed minutes (~240 per game),
+// matching the convention already used by minutesShare() and the rate stats.
+//
+// Every intermediate returns null the moment a required input is missing or a
+// denominator is 0, so nulls cascade to the final rating.
+// ---------------------------------------------------------------------------
+
+export interface RatingStatLine {
+  minutes?: number | null;
+  points?: number | null;
+  fieldGoals?: number | null;
+  fieldGoalAttempts?: number | null;
+  threePointMakes?: number | null;
+  freeThrows?: number | null;
+  freeThrowAttempts?: number | null;
+  offensiveRebounds?: number | null;
+  defensiveRebounds?: number | null;
+  totalRebounds?: number | null;
+  assists?: number | null;
+  steals?: number | null;
+  blocks?: number | null;
+  turnovers?: number | null;
+  fouls?: number | null;
+}
+
+/** Defensive rebounds, falling back to TRB − ORB when DRB isn't on the line. */
+function defensiveRebounds(line: RatingStatLine): NullableNumber {
+  if (isFiniteNumber(line.defensiveRebounds)) {
+    return line.defensiveRebounds;
+  }
+  if (isFiniteNumber(line.totalRebounds) && isFiniteNumber(line.offensiveRebounds)) {
+    return line.totalRebounds - line.offensiveRebounds;
+  }
+  return null;
+}
+
+/** `(1 - makes/attempts)^2`, the missed-FT factor shared by several terms. */
+function missWeight(makes: number, attempts: number): number {
+  return Math.pow(1 - makes / attempts, 2);
+}
+
+interface TeamOffenseContext {
+  teamScoringPoss: number; // Team_Scoring_Poss
+  teamPlayPct: number; // Team_Play%
+  teamOrbPct: number; // Team_ORB%
+  teamOrbWeight: number; // Team_ORB_Weight
+}
+
+/** Team-level factors reused across ScPoss, TotPoss, and PProd. */
+function teamOffenseContext(
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+): TeamOffenseContext | null {
+  const teamFgm = team.fieldGoals;
+  const teamFga = team.fieldGoalAttempts;
+  const teamFtm = team.freeThrows;
+  const teamFta = team.freeThrowAttempts;
+  const teamTov = team.turnovers;
+  const teamOrb = team.offensiveRebounds;
+  const oppDrb = defensiveRebounds(opponent);
+
+  if (
+    !isFiniteNumber(teamFgm) ||
+    !isFiniteNumber(teamFga) ||
+    !isFiniteNumber(teamFtm) ||
+    !isFiniteNumber(teamFta) ||
+    !isFiniteNumber(teamTov) ||
+    !isFiniteNumber(teamOrb) ||
+    !isFiniteNumber(oppDrb) ||
+    teamFta === 0
+  ) {
+    return null;
+  }
+
+  const teamScoringPoss = teamFgm + (1 - missWeight(teamFtm, teamFta)) * teamFta * 0.4;
+
+  const playDenom = teamFga + teamFta * 0.4 + teamTov;
+  const orbDenom = teamOrb + oppDrb;
+  if (playDenom === 0 || orbDenom === 0) {
+    return null;
+  }
+  const teamPlayPct = teamScoringPoss / playDenom;
+  const teamOrbPct = teamOrb / orbDenom;
+
+  const weightDenom = (1 - teamOrbPct) * teamPlayPct + teamOrbPct * (1 - teamPlayPct);
+  if (weightDenom === 0) {
+    return null;
+  }
+  const teamOrbWeight = ((1 - teamOrbPct) * teamPlayPct) / weightDenom;
+
+  return { teamScoringPoss, teamPlayPct, teamOrbPct, teamOrbWeight };
+}
+
+/** qAST — share of the player's made FGs that were assisted by teammates. */
+function qAssist(player: RatingStatLine, team: RatingStatLine): NullableNumber {
+  const mp = player.minutes;
+  const ast = player.assists;
+  const fgm = player.fieldGoals;
+  const teamMp = team.minutes;
+  const teamAst = team.assists;
+  const teamFgm = team.fieldGoals;
+
+  if (
+    !isFiniteNumber(mp) ||
+    !isFiniteNumber(ast) ||
+    !isFiniteNumber(fgm) ||
+    !isFiniteNumber(teamMp) ||
+    !isFiniteNumber(teamAst) ||
+    !isFiniteNumber(teamFgm) ||
+    teamMp === 0 ||
+    teamFgm === 0
+  ) {
+    return null;
+  }
+
+  const share = mp / (teamMp / 5); // MP / (Team_MP / 5)
+  const term1 = share * (1.14 * ((teamAst - ast) / teamFgm));
+
+  const denom2 = (teamFgm / teamMp) * mp * 5 - fgm;
+  if (denom2 === 0) {
+    return null;
+  }
+  const numer2 = (teamAst / teamMp) * mp * 5 - ast;
+  const term2 = (numer2 / denom2) * (1 - share);
+
+  return term1 + term2;
+}
+
+/** Scoring Possessions (ScPoss) — possessions the player ends by scoring. */
+export function scoringPossessions(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+): NullableNumber {
+  const ctx = teamOffenseContext(team, opponent);
+  const qast = qAssist(player, team);
+  const fgm = player.fieldGoals;
+  const fga = player.fieldGoalAttempts;
+  const ftm = player.freeThrows;
+  const fta = player.freeThrowAttempts;
+  const pts = player.points;
+  const ast = player.assists;
+  const orb = player.offensiveRebounds;
+  const teamPts = team.points;
+  const teamFtm = team.freeThrows;
+  const teamFga = team.fieldGoalAttempts;
+  const teamOrb = team.offensiveRebounds;
+
+  if (
+    ctx === null ||
+    !isFiniteNumber(qast) ||
+    !isFiniteNumber(fgm) ||
+    !isFiniteNumber(fga) ||
+    !isFiniteNumber(ftm) ||
+    !isFiniteNumber(fta) ||
+    !isFiniteNumber(pts) ||
+    !isFiniteNumber(ast) ||
+    !isFiniteNumber(orb) ||
+    !isFiniteNumber(teamPts) ||
+    !isFiniteNumber(teamFtm) ||
+    !isFiniteNumber(teamFga) ||
+    !isFiniteNumber(teamOrb) ||
+    fga === 0 ||
+    ctx.teamScoringPoss === 0
+  ) {
+    return null;
+  }
+
+  const fgPart = fgm * (1 - 0.5 * ((pts - ftm) / (2 * fga)) * qast);
+
+  const astDenom = 2 * (teamFga - fga);
+  if (astDenom === 0) {
+    return null;
+  }
+  const astPart = 0.5 * ((teamPts - teamFtm - (pts - ftm)) / astDenom) * ast;
+
+  // No FTAs contribute no scoring possessions from the line.
+  const ftPart = fta === 0 ? 0 : (1 - missWeight(ftm, fta)) * 0.4 * fta;
+
+  const orbPart = orb * ctx.teamOrbWeight * ctx.teamPlayPct;
+
+  return (
+    (fgPart + astPart + ftPart) *
+      (1 - (teamOrb / ctx.teamScoringPoss) * ctx.teamOrbWeight * ctx.teamPlayPct) +
+    orbPart
+  );
+}
+
+/** Individual Total Possessions (TotPoss) = ScPoss + FGxPoss + FTxPoss + TOV. */
+export function individualTotalPossessions(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+): NullableNumber {
+  const scPoss = scoringPossessions(player, team, opponent);
+  const ctx = teamOffenseContext(team, opponent);
+  const fgm = player.fieldGoals;
+  const fga = player.fieldGoalAttempts;
+  const ftm = player.freeThrows;
+  const fta = player.freeThrowAttempts;
+  const tov = player.turnovers;
+
+  if (
+    !isFiniteNumber(scPoss) ||
+    ctx === null ||
+    !isFiniteNumber(fgm) ||
+    !isFiniteNumber(fga) ||
+    !isFiniteNumber(ftm) ||
+    !isFiniteNumber(fta) ||
+    !isFiniteNumber(tov)
+  ) {
+    return null;
+  }
+
+  const fgxPoss = (fga - fgm) * (1 - 1.07 * ctx.teamOrbPct);
+  const ftxPoss = fta === 0 ? 0 : missWeight(ftm, fta) * 0.4 * fta;
+
+  return scPoss + fgxPoss + ftxPoss + tov;
+}
+
+/** Individual Points Produced (PProd). */
+export function pointsProduced(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+): NullableNumber {
+  const ctx = teamOffenseContext(team, opponent);
+  const qast = qAssist(player, team);
+  const fgm = player.fieldGoals;
+  const fga = player.fieldGoalAttempts;
+  const tpm = player.threePointMakes;
+  const ftm = player.freeThrows;
+  const pts = player.points;
+  const ast = player.assists;
+  const orb = player.offensiveRebounds;
+  const teamFgm = team.fieldGoals;
+  const teamFga = team.fieldGoalAttempts;
+  const teamTpm = team.threePointMakes;
+  const teamPts = team.points;
+  const teamFtm = team.freeThrows;
+  const teamOrb = team.offensiveRebounds;
+
+  if (
+    ctx === null ||
+    !isFiniteNumber(qast) ||
+    !isFiniteNumber(fgm) ||
+    !isFiniteNumber(fga) ||
+    !isFiniteNumber(tpm) ||
+    !isFiniteNumber(ftm) ||
+    !isFiniteNumber(pts) ||
+    !isFiniteNumber(ast) ||
+    !isFiniteNumber(orb) ||
+    !isFiniteNumber(teamFgm) ||
+    !isFiniteNumber(teamFga) ||
+    !isFiniteNumber(teamTpm) ||
+    !isFiniteNumber(teamPts) ||
+    !isFiniteNumber(teamFtm) ||
+    !isFiniteNumber(teamOrb) ||
+    fga === 0 ||
+    ctx.teamScoringPoss === 0
+  ) {
+    return null;
+  }
+
+  const pProdFgPart = 2 * (fgm + 0.5 * tpm) * (1 - 0.5 * ((pts - ftm) / (2 * fga)) * qast);
+
+  const astFgDenom = teamFgm - fgm;
+  const astDenom = 2 * (teamFga - fga);
+  if (astFgDenom === 0 || astDenom === 0) {
+    return null;
+  }
+  const pProdAstPart =
+    2 *
+    ((teamFgm - fgm + 0.5 * (teamTpm - tpm)) / astFgDenom) *
+    0.5 *
+    ((teamPts - teamFtm - (pts - ftm)) / astDenom) *
+    ast;
+
+  // Denominator equals Team_Scoring_Poss (same formula), already in ctx.
+  const pProdOrbPart =
+    orb * ctx.teamOrbWeight * ctx.teamPlayPct * (teamPts / ctx.teamScoringPoss);
+
+  return (
+    (pProdFgPart + pProdAstPart + ftm) *
+      (1 - (teamOrb / ctx.teamScoringPoss) * ctx.teamOrbWeight * ctx.teamPlayPct) +
+    pProdOrbPart
+  );
+}
+
+/** Individual Offensive Rating — points produced per 100 individual possessions. */
+export function individualOffensiveRating(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+): NullableNumber {
+  const pProd = pointsProduced(player, team, opponent);
+  const totPoss = individualTotalPossessions(player, team, opponent);
+  return safeRatio(isFiniteNumber(pProd) ? 100 * pProd : pProd, totPoss);
+}
+
+/** Defensive Stops (Stops = Stops1 + Stops2). */
+export function defensiveStops(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+): NullableNumber {
+  const stl = player.steals;
+  const blk = player.blocks;
+  const drb = defensiveRebounds(player);
+  const pf = player.fouls;
+  const mp = player.minutes;
+  const teamMp = team.minutes;
+  const teamBlk = team.blocks;
+  const teamStl = team.steals;
+  const teamDrb = defensiveRebounds(team);
+  const teamPf = team.fouls;
+  const oppFga = opponent.fieldGoalAttempts;
+  const oppFgm = opponent.fieldGoals;
+  const oppTov = opponent.turnovers;
+  const oppFta = opponent.freeThrowAttempts;
+  const oppFtm = opponent.freeThrows;
+  const oppOrb = opponent.offensiveRebounds;
+
+  if (
+    !isFiniteNumber(stl) ||
+    !isFiniteNumber(blk) ||
+    !isFiniteNumber(drb) ||
+    !isFiniteNumber(pf) ||
+    !isFiniteNumber(mp) ||
+    !isFiniteNumber(teamMp) ||
+    !isFiniteNumber(teamBlk) ||
+    !isFiniteNumber(teamStl) ||
+    !isFiniteNumber(teamDrb) ||
+    !isFiniteNumber(teamPf) ||
+    !isFiniteNumber(oppFga) ||
+    !isFiniteNumber(oppFgm) ||
+    !isFiniteNumber(oppTov) ||
+    !isFiniteNumber(oppFta) ||
+    !isFiniteNumber(oppFtm) ||
+    !isFiniteNumber(oppOrb) ||
+    oppFga === 0 ||
+    teamMp === 0
+  ) {
+    return null;
+  }
+
+  const dorDenom = oppOrb + teamDrb;
+  if (dorDenom === 0) {
+    return null;
+  }
+  const dorPct = oppOrb / dorDenom; // DOR%
+  const dfgPct = oppFgm / oppFga; // DFG%
+
+  const fmDenom = dfgPct * (1 - dorPct) + (1 - dfgPct) * dorPct;
+  if (fmDenom === 0) {
+    return null;
+  }
+  const fmwt = (dfgPct * (1 - dorPct)) / fmDenom; // Forced Miss weight
+
+  const stops1 = stl + blk * fmwt * (1 - 1.07 * dorPct) + drb * (1 - fmwt);
+
+  let ftStop = 0;
+  if (oppFta !== 0) {
+    if (teamPf === 0) {
+      return null;
+    }
+    ftStop = (pf / teamPf) * 0.4 * oppFta * missWeight(oppFtm, oppFta);
+  }
+  const stops2 =
+    (((oppFga - oppFgm - teamBlk) / teamMp) * fmwt * (1 - 1.07 * dorPct) +
+      (oppTov - teamStl) / teamMp) *
+      mp +
+    ftStop;
+
+  return stops1 + stops2;
+}
+
+/** Stop% — rate the player forces a stop on possessions faced. */
+export function stopPercentage(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+  teamPossessions: number | null | undefined,
+): NullableNumber {
+  const stops = defensiveStops(player, team, opponent);
+  const oppMp = opponent.minutes;
+  const mp = player.minutes;
+
+  if (
+    !isFiniteNumber(stops) ||
+    !isFiniteNumber(oppMp) ||
+    !isFiniteNumber(mp) ||
+    !isFiniteNumber(teamPossessions)
+  ) {
+    return null;
+  }
+
+  return safeRatio(stops * oppMp, teamPossessions * mp);
+}
+
+/** Individual Defensive Rating — points allowed per 100 possessions faced. */
+export function individualDefensiveRating(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+  teamPossessions: number | null | undefined,
+): NullableNumber {
+  const stopPct = stopPercentage(player, team, opponent, teamPossessions);
+  const oppPts = opponent.points;
+  const oppFgm = opponent.fieldGoals;
+  const oppFta = opponent.freeThrowAttempts;
+  const oppFtm = opponent.freeThrows;
+
+  if (
+    !isFiniteNumber(stopPct) ||
+    !isFiniteNumber(oppPts) ||
+    !isFiniteNumber(oppFgm) ||
+    !isFiniteNumber(oppFta) ||
+    !isFiniteNumber(oppFtm) ||
+    !isFiniteNumber(teamPossessions) ||
+    teamPossessions === 0
+  ) {
+    return null;
+  }
+
+  const teamDRtg = 100 * (oppPts / teamPossessions);
+
+  const scDenom = oppFgm + (oppFta === 0 ? 0 : (1 - missWeight(oppFtm, oppFta)) * oppFta * 0.4);
+  if (scDenom === 0) {
+    return null;
+  }
+  const dPtsPerScPoss = oppPts / scDenom;
+
+  return teamDRtg + 0.2 * (100 * dPtsPerScPoss * (1 - stopPct) - teamDRtg);
+}
+
 export function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }

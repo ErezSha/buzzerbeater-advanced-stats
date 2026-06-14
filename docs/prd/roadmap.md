@@ -9,6 +9,7 @@
 ## Individual Player Metrics
 - [ ] player PERformance
 - [ ] VORP (Value Over Replacement Player) — cumulative metric: (BPM - replacement_level) × minutes_share; rewards both efficiency and playing time; great for trade analysis
+- [x] individual ORtg + DRtg
 - [ ] win shares
 - [ ] multi year stats
 - [x] feats — double-double, triple-double, quadruple-double, 5-by-5
@@ -16,7 +17,7 @@
 
 ## Play-by-Play (requires subscriber API)
 Unlocks lineup-level data: who is on the floor and when.
-- [ ] individual ORtg + DRtg
+
 - [ ] On-Off — team efficiency with player on court vs. without (requires knowing the "without" side)
 - [ ] Adjusted Plus/Minus (APM) — regression-based, controls for teammate/opponent quality
 - [ ] RAPM (ridge-regularized APM) — better stability for small samples / bench players

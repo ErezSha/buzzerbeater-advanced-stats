@@ -51,6 +51,9 @@ describe("single player analysis data flow", () => {
       rebounds: 3,
     });
     expect(analysis.summary.usageRate).toEqual(expect.any(Number));
+    // Individual ORtg/DRtg are populated when team + opponent box-score totals exist.
+    expect(analysis.summary.offensiveRating).toEqual(expect.any(Number));
+    expect(analysis.summary.defensiveRating).toEqual(expect.any(Number));
     expect(analysis.boxScoreCount).toBe(1);
     expect(analysis.finishedMatchCount).toBe(1);
     expect(analysis.previousSnapshot).toBeNull();
@@ -112,6 +115,8 @@ describe("single player analysis data flow", () => {
         stealPercentage: null,
         reboundPercentage: null,
         usageRate: null,
+        offensiveRating: null,
+        defensiveRating: null,
         gameScoreTotal: null,
         gameScoreAverage: null,
         plusMinus: null,

@@ -127,6 +127,20 @@ export const glossaryEntries: GlossaryEntry[] = [
     availability: "Shown for finished games with reliable possession estimates.",
   },
   {
+    id: "individual-ortg",
+    name: "Individual ORtg",
+    formula: "100 * Points Produced / Individual Total Possessions (Dean Oliver, Basketball on Paper)",
+    interpretation: "Points a player produces per 100 individual possessions used — a box-score estimate of personal offensive efficiency. Best read alongside usage, since high usage makes a high ORtg harder to sustain.",
+    availability: "Shown when the player's season line plus their team and opponent box-score totals are available.",
+  },
+  {
+    id: "individual-drtg",
+    name: "Individual DRtg",
+    formula: "Team DRtg + 0.2 * (100 * D_Pts_per_ScPoss * (1 - Stop%) - Team DRtg) (Dean Oliver, Basketball on Paper)",
+    interpretation: "Points a player allows per 100 possessions faced, built from stops (steals, blocks, defensive rebounds) plus estimated forced misses/turnovers. Leans heavily on team defense, so it underrates non-stealing perimeter defenders and favors big men.",
+    availability: "Shown when the player's season line plus their team and opponent box-score totals are available.",
+  },
+  {
     id: "pace",
     name: "Pace",
     formula: "Estimated possessions for the team game",

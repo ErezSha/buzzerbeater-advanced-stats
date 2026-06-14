@@ -49,6 +49,8 @@ describe("player snapshot store", () => {
         stealPercentage: null,
         reboundPercentage: null,
         usageRate: null,
+        offensiveRating: null,
+        defensiveRating: null,
         gameScoreTotal: null,
         gameScoreAverage: null,
         plusMinus: null,

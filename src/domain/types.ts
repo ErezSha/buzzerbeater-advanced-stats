@@ -189,6 +189,10 @@ export interface PlayerMetricSummary {
   stealPercentage: number | null;
   reboundPercentage: number | null;
   usageRate: number | null;
+  // Dean Oliver individual ratings (box-score estimates), distinct from the
+  // team-level ratings on TeamGameMetrics.
+  offensiveRating: number | null;
+  defensiveRating: number | null;
   gameScoreTotal: number | null;
   gameScoreAverage: number | null;
   plusMinus: number | null;
