@@ -28,6 +28,7 @@ Test LOGIC ONLY - there's no need to test visual pages at all
 ## Docs Index
 
 - `docs/prd/prd-mvp.md` - MVP product requirements and implementation source of truth.
+- `docs/prd/active/picks-game.md` - Picks game PRD: BB-auth'd credit betting game on model spreads/odds.
 - `docs/references/buzzerbeater-api.md` - BBAPI endpoints, auth flow, XML behavior, and errors.
 - `docs/references/buzzerbeater-schemas.md` - BBAPI types examples.
 - `docs/references/buzzer-beater-enthusiasm.md` - explanation about how "enthusiasm" works in BuzzerBeater
