@@ -11,10 +11,12 @@ export const HOME_COURT_POINTS = 3;
 /**
  * Game-to-game margin standard deviation, used to convert an expected margin
  * into a win probability via the normal CDF. Larger = predictions pulled toward
- * 50%. NBA single-game margins run ~12; BuzzerBeater is unmeasured, so this is a
- * placeholder prior.
+ * 50%. Measured at ~23 from the residual spread (actual margin − predicted) over
+ * the first settled sample — much wider than NBA's ~12, so an earlier 12 left the
+ * model badly overconfident (Brier 0.285 → 0.242 at 23). Re-measure as the
+ * settled set grows via `npm run settle -- --marginStdDev=N`.
  */
-export const MARGIN_STD_DEV = 12;
+export const MARGIN_STD_DEV = 23;
 
 /** Game shape that maps to a neutral (1.0) form multiplier. BB game shape is 1–10. */
 export const GAME_SHAPE_BASELINE = 7;
