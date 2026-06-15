@@ -1,14 +1,17 @@
 import type {
   BoxScore,
   Player,
+  PlayerGameStat,
   PlayerMetricSummary,
   PlayerSeasonStat,
+  TeamGameStat,
 } from "@/domain/types";
 import {
   addPlayerStat,
   addStatTotals,
   emptyTotals,
   shootingMetrics,
+  type StatTotals,
   totalsFromTeamStat,
 } from "@/domain/derive-utils";
 import {
@@ -19,12 +22,96 @@ import {
   gameScore,
   individualDefensiveRating,
   individualOffensiveRating,
+  isFiniteNumber,
   reboundPercentage,
   safeRatio,
   stealPercentage,
   turnoverPercentage,
   usageRate,
 } from "@/domain/metrics";
+
+/**
+ * Defensive rebounds are usable when DRB is on the line, or when both TRB and
+ * ORB are (the formulas fall back to TRB − ORB). Mirrors metrics.defensiveRebounds.
+ */
+function defensiveReboundsAvailable(line: {
+  defensiveRebounds?: number | null;
+  totalRebounds?: number | null;
+  offensiveRebounds?: number | null;
+}): boolean {
+  return (
+    isFiniteNumber(line.defensiveRebounds) ||
+    (isFiniteNumber(line.totalRebounds) && isFiniteNumber(line.offensiveRebounds))
+  );
+}
+
+function allFinite<T>(obj: T, keys: Array<keyof T>): boolean {
+  return keys.every((key) => isFiniteNumber(obj[key]));
+}
+
+// Fields the ORtg/DRtg formulas read off each stat line. A game contributes to
+// the ratings only when its box score carries all of them (see hasRatingFields),
+// so one incomplete game no longer nullifies a player's season-long ratings.
+const PLAYER_RATING_FIELDS: Array<keyof PlayerGameStat> = [
+  "minutes",
+  "points",
+  "fieldGoals",
+  "fieldGoalAttempts",
+  "threePointMakes",
+  "freeThrows",
+  "freeThrowAttempts",
+  "offensiveRebounds",
+  "assists",
+  "steals",
+  "blocks",
+  "turnovers",
+  "fouls",
+];
+// `points` is checked on the raw box score below, not here: totalsFromTeamStat
+// coerces a missing team/opponent points to 0, so it would always pass `allFinite`.
+const TEAM_RATING_FIELDS: Array<keyof StatTotals> = [
+  "minutes",
+  "fieldGoals",
+  "fieldGoalAttempts",
+  "threePointMakes",
+  "freeThrows",
+  "freeThrowAttempts",
+  "offensiveRebounds",
+  "assists",
+  "steals",
+  "blocks",
+  "turnovers",
+  "fouls",
+];
+const OPP_RATING_FIELDS: Array<keyof StatTotals> = [
+  "minutes",
+  "fieldGoals",
+  "fieldGoalAttempts",
+  "freeThrows",
+  "freeThrowAttempts",
+  "offensiveRebounds",
+  "turnovers",
+];
+
+/** Whether a single game has the complete field set the rating formulas need. */
+function hasRatingFields(
+  player: PlayerGameStat,
+  team: StatTotals,
+  teamRaw: TeamGameStat | null | undefined,
+  opponent: StatTotals,
+  opponentRaw: TeamGameStat | null | undefined,
+): boolean {
+  return (
+    allFinite(player, PLAYER_RATING_FIELDS) &&
+    defensiveReboundsAvailable(player) &&
+    allFinite(team, TEAM_RATING_FIELDS) &&
+    defensiveReboundsAvailable(team) &&
+    isFiniteNumber(teamRaw?.points) &&
+    allFinite(opponent, OPP_RATING_FIELDS) &&
+    defensiveReboundsAvailable(opponent) &&
+    isFiniteNumber(opponentRaw?.points)
+  );
+}
 
 export function derivePlayerMetricSummaries(
   players: Player[],
@@ -39,6 +126,13 @@ export function derivePlayerMetricSummaries(
   const gameScoresByPlayer = new Map<string, number[]>();
   const teamTotalsByPlayer = new Map<string, ReturnType<typeof emptyTotals>>();
   const oppTotalsByPlayer = new Map<string, ReturnType<typeof emptyTotals>>();
+  // Parallel totals restricted to games with a complete box score, used solely
+  // for the Dean Oliver ratings so partial data degrades the coverage count
+  // rather than nulling the ratings outright.
+  const ratingPlayerTotalsByPlayer = new Map<string, ReturnType<typeof emptyTotals>>();
+  const ratingTeamTotalsByPlayer = new Map<string, ReturnType<typeof emptyTotals>>();
+  const ratingOppTotalsByPlayer = new Map<string, ReturnType<typeof emptyTotals>>();
+  const ratingGamesByPlayer = new Map<string, number>();
   const plusMinusByPlayer = new Map<string, number>();
   const featsByPlayer = new Map<string, { dd: number; td: number; qd: number; fiveX5: number }>();
 
@@ -94,6 +188,8 @@ export function derivePlayerMetricSummaries(
 
       if (stat.teamId && (homeTeamId || awayTeamId)) {
         const isHome = stat.teamId === homeTeamId;
+        const myTeamRaw = isHome ? boxScore.homeTeam : boxScore.awayTeam;
+        const oppRaw = isHome ? boxScore.awayTeam : boxScore.homeTeam;
         const myTeamTotals = {
           ...(isHome ? homeTeamTotals : awayTeamTotals),
           minutes: teamMinutesById.get(stat.teamId) ?? null,
@@ -111,6 +207,24 @@ export function derivePlayerMetricSummaries(
 
         const existingOpp = oppTotalsByPlayer.get(stat.playerId) ?? emptyTotals();
         oppTotalsByPlayer.set(stat.playerId, addStatTotals(existingOpp, oppTotals));
+
+        // Only fold this game into the rating inputs when its box score is
+        // complete; otherwise it would poison the whole-season totals.
+        if (hasRatingFields(stat, myTeamTotals, myTeamRaw, oppTotals, oppRaw)) {
+          ratingPlayerTotalsByPlayer.set(
+            stat.playerId,
+            addPlayerStat(ratingPlayerTotalsByPlayer.get(stat.playerId) ?? emptyTotals(), stat),
+          );
+          ratingTeamTotalsByPlayer.set(
+            stat.playerId,
+            addStatTotals(ratingTeamTotalsByPlayer.get(stat.playerId) ?? emptyTotals(), myTeamTotals),
+          );
+          ratingOppTotalsByPlayer.set(
+            stat.playerId,
+            addStatTotals(ratingOppTotalsByPlayer.get(stat.playerId) ?? emptyTotals(), oppTotals),
+          );
+          ratingGamesByPlayer.set(stat.playerId, (ratingGamesByPlayer.get(stat.playerId) ?? 0) + 1);
+        }
       }
     }
   }
@@ -119,6 +233,11 @@ export function derivePlayerMetricSummaries(
     const totals = statsByPlayer.get(player.id) ?? emptyTotals();
     const teamTotals = teamTotalsByPlayer.get(player.id) ?? emptyTotals();
     const oppTotals = oppTotalsByPlayer.get(player.id) ?? emptyTotals();
+    // Ratings draw from the complete-game subset (see hasRatingFields).
+    const ratingPlayerTotals = ratingPlayerTotalsByPlayer.get(player.id) ?? emptyTotals();
+    const ratingTeamTotals = ratingTeamTotalsByPlayer.get(player.id) ?? emptyTotals();
+    const ratingOppTotals = ratingOppTotalsByPlayer.get(player.id) ?? emptyTotals();
+    const ratingGames = ratingGamesByPlayer.get(player.id) ?? 0;
     const seasonStat = seasonStatsByPlayer.get(player.id) ?? null;
     const gameScores = gameScoresByPlayer.get(player.id) ?? [];
     const gameScoreTotal =
@@ -186,13 +305,18 @@ export function derivePlayerMetricSummaries(
         totals.minutes,
         teamTotals.minutes,
       ),
-      offensiveRating: individualOffensiveRating(totals, teamTotals, oppTotals),
-      defensiveRating: individualDefensiveRating(
-        totals,
-        teamTotals,
-        oppTotals,
-        estimatedPossessions(teamTotals),
+      offensiveRating: individualOffensiveRating(
+        ratingPlayerTotals,
+        ratingTeamTotals,
+        ratingOppTotals,
       ),
+      defensiveRating: individualDefensiveRating(
+        ratingPlayerTotals,
+        ratingTeamTotals,
+        ratingOppTotals,
+        estimatedPossessions(ratingTeamTotals),
+      ),
+      ratingGames,
       gameScoreTotal,
       gameScoreAverage: safeRatio(gameScoreTotal, gameScores.length),
       plusMinus: plusMinusByPlayer.get(player.id) ?? null,

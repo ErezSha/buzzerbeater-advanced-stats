@@ -190,9 +190,12 @@ export interface PlayerMetricSummary {
   reboundPercentage: number | null;
   usageRate: number | null;
   // Dean Oliver individual ratings (box-score estimates), distinct from the
-  // team-level ratings on TeamGameMetrics.
+  // team-level ratings on TeamGameMetrics. Computed only over games whose box
+  // score carries every field the formulas need; `ratingGames` is that count
+  // (≤ `games`) so a partial denominator is visible rather than silent.
   offensiveRating: number | null;
   defensiveRating: number | null;
+  ratingGames: number;
   gameScoreTotal: number | null;
   gameScoreAverage: number | null;
   plusMinus: number | null;

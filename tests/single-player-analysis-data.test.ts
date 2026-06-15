@@ -117,6 +117,7 @@ describe("single player analysis data flow", () => {
         usageRate: null,
         offensiveRating: null,
         defensiveRating: null,
+        ratingGames: 0,
         gameScoreTotal: null,
         gameScoreAverage: null,
         plusMinus: null,

@@ -101,6 +101,7 @@ export function deriveLeaguePlayerMetricSummaries(
         blockPercentage: null,
         offensiveRating: null,
         defensiveRating: null,
+        ratingGames: 0,
         gameScoreTotal: avgGmSc !== null ? avgGmSc * g : null,
         gameScoreAverage: avgGmSc,
         plusMinus: null,
