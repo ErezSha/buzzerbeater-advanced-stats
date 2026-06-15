@@ -25,6 +25,12 @@ Keep BBAPI credentials server-side. Do not expose the read-only security code to
 
 Test LOGIC ONLY - there's no need to test visual pages at all
 
+## Commands
+
+- `npm test` - run the vitest suite.
+- `npm run typecheck` - typecheck committed source + tests only (`tsc -p tsconfig.check.json`). Use this, not a bare `tsc --noEmit`: the base `tsconfig.json` has a broad `**/*.ts` include that also pulls in local, gitignored scratch files under `scripts/`, which reference modules absent from the repo and will report spurious errors.
+- `npm run lint` - eslint.
+
 ## Docs Index
 
 - `docs/prd/prd-mvp.md` - MVP product requirements and implementation source of truth.
