@@ -141,6 +141,27 @@ export const glossaryEntries: GlossaryEntry[] = [
     availability: "Shown when the player's season line plus their team and opponent box-score totals are available.",
   },
   {
+    id: "offensive-win-shares",
+    name: "Offensive Win Shares",
+    formula: "(Points Produced - 0.92 * league points per possession * Individual Total Possessions) / marginal points per win (Dean Oliver / Basketball-Reference)",
+    interpretation: "An estimate of the wins a player generated on offense. Cumulative, so it rewards both efficiency and minutes played.",
+    availability: "Shown when the player's team and opponent box-score totals are available. The league baseline is the team's own opponents, not a full-league average.",
+  },
+  {
+    id: "defensive-win-shares",
+    name: "Defensive Win Shares",
+    formula: "((MP / Tm MP) * team defensive possessions * (1.08 * league points per possession - DRtg / 100)) / marginal points per win (Dean Oliver / Basketball-Reference)",
+    interpretation: "An estimate of the wins a player generated on defense, derived from individual DRtg. Cumulative, so it rewards both efficiency and minutes played.",
+    availability: "Shown when the player's team and opponent box-score totals are available. The league baseline is the team's own opponents, not a full-league average.",
+  },
+  {
+    id: "win-shares",
+    name: "Win Shares",
+    formula: "Offensive Win Shares + Defensive Win Shares (Dean Oliver / Basketball-Reference)",
+    interpretation: "An estimate of the total wins a player contributed. The sum of a team's player Win Shares roughly equals its win total. Can go negative for very poor play.",
+    availability: "Shown when the player's team and opponent box-score totals are available. The league baseline is the team's own opponents, not a full-league average.",
+  },
+  {
     id: "pace",
     name: "Pace",
     formula: "Estimated possessions for the team game",

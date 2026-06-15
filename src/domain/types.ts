@@ -195,6 +195,12 @@ export interface PlayerMetricSummary {
   // (≤ `games`) so a partial denominator is visible rather than silent.
   offensiveRating: number | null;
   defensiveRating: number | null;
+  // Win Shares (Dean Oliver / Basketball-Reference), cumulative over the same
+  // complete-box-score subset as the ratings above. Self-contained baseline:
+  // the team plus the opponents it actually faced, not a full-league average.
+  offensiveWinShares: number | null;
+  defensiveWinShares: number | null;
+  winShares: number | null;
   ratingGames: number;
   gameScoreTotal: number | null;
   gameScoreAverage: number | null;

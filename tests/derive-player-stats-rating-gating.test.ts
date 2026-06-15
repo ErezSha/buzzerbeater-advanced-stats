@@ -143,4 +143,32 @@ describe("individual rating gating in derivePlayerMetricSummaries", () => {
     expect(summary.offensiveRating).toBeNull();
     expect(summary.defensiveRating).toBeNull();
   });
+
+  it("populates Win Shares over the complete-game subset", () => {
+    const [summary] = derivePlayerMetricSummaries(
+      [player],
+      [],
+      [game("g1", targetStat("g1")), game("g2", targetStat("g2"))],
+    );
+
+    expect(summary.offensiveWinShares).not.toBeNull();
+    expect(summary.defensiveWinShares).not.toBeNull();
+    expect(summary.winShares).not.toBeNull();
+    expect(summary.winShares).toBeCloseTo(
+      summary.offensiveWinShares! + summary.defensiveWinShares!,
+      9,
+    );
+  });
+
+  it("leaves Win Shares null when no game is complete", () => {
+    const [summary] = derivePlayerMetricSummaries(
+      [player],
+      [],
+      [game("g1", targetStat("g1", { freeThrowAttempts: null }))],
+    );
+
+    expect(summary.offensiveWinShares).toBeNull();
+    expect(summary.defensiveWinShares).toBeNull();
+    expect(summary.winShares).toBeNull();
+  });
 });

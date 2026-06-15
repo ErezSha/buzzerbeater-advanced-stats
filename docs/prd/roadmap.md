@@ -10,7 +10,7 @@
 - [ ] player PERformance
 - [ ] VORP (Value Over Replacement Player) — cumulative metric: (BPM - replacement_level) × minutes_share; rewards both efficiency and playing time; great for trade analysis
 - [x] individual ORtg + DRtg
-- [ ] win shares
+- [x] win shares
 - [ ] multi year stats
 - [x] feats — double-double, triple-double, quadruple-double, 5-by-5
 - [x] capture +/- from box score API (currently in raw API response but not mapped into our types)

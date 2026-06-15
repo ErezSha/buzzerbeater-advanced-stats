@@ -822,6 +822,130 @@ export function individualDefensiveRating(
   return teamDRtg + 0.2 * (100 * dPtsPerScPoss * (1 - stopPct) - teamDRtg);
 }
 
+// ---------------------------------------------------------------------------
+// Win Shares (Dean Oliver, via Basketball-Reference). See
+// docs/references/win-shares.md. Built directly on the individual ORtg/DRtg
+// machinery above: Offensive Win Shares from Points Produced / Total Possessions,
+// Defensive Win Shares from individual DRtg.
+//
+// "Marginal points per win" is defined by BBR as
+//   0.32 * lgPtsPerGame * (teamPace / lgPace)
+// but since lgPtsPerGame / lgPace == lgPtsPerPoss by definition, it reduces
+// exactly to
+//   mPPW = 0.32 * lgPtsPerPoss * teamPace,  teamPace = teamPoss / teamGames
+// so the only league-level input needed is points per possession. We source it
+// self-contained (the team plus the opponents it actually faced) rather than a
+// full-league average, matching how the individual ratings stay self-contained;
+// see derivePlayerMetricSummaries. Negative Win Shares are allowed (no clamping),
+// per the methodology. Any null input cascades to a null result.
+// ---------------------------------------------------------------------------
+
+export interface WinSharesLeagueContext {
+  /** League points per possession — the self-contained scoring-environment baseline. */
+  pointsPerPossession: number | null;
+}
+
+/** mPPW = 0.32 * lgPtsPerPoss * (teamPoss / teamGames). */
+function marginalPointsPerWin(
+  teamPossessions: number | null | undefined,
+  teamGames: number | null | undefined,
+  leaguePointsPerPossession: number | null | undefined,
+): NullableNumber {
+  if (
+    !isFiniteNumber(teamPossessions) ||
+    !isFiniteNumber(teamGames) ||
+    teamGames === 0 ||
+    !isFiniteNumber(leaguePointsPerPossession)
+  ) {
+    return null;
+  }
+  return 0.32 * leaguePointsPerPossession * (teamPossessions / teamGames);
+}
+
+/** Offensive Win Shares = (PProd − 0.92 * lgPtsPerPoss * TotPoss) / mPPW. */
+export function offensiveWinShares(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+  teamPossessions: number | null | undefined,
+  teamGames: number | null | undefined,
+  league: WinSharesLeagueContext,
+): NullableNumber {
+  const lgPtsPerPoss = league.pointsPerPossession;
+  const pProd = pointsProduced(player, team, opponent);
+  const totPoss = individualTotalPossessions(player, team, opponent);
+  const mppw = marginalPointsPerWin(teamPossessions, teamGames, lgPtsPerPoss);
+
+  if (
+    !isFiniteNumber(lgPtsPerPoss) ||
+    !isFiniteNumber(pProd) ||
+    !isFiniteNumber(totPoss) ||
+    !isFiniteNumber(mppw) ||
+    mppw === 0
+  ) {
+    return null;
+  }
+
+  const marginalOffense = pProd - 0.92 * lgPtsPerPoss * totPoss;
+  return marginalOffense / mppw;
+}
+
+/**
+ * Defensive Win Shares = marginal defense / mPPW, where marginal defense is
+ * (MP / Tm MP) * team defensive possessions * (1.08 * lgPtsPerPoss − DRtg/100).
+ * Defensive possessions are estimated with the team's own possessions (per BBR).
+ */
+export function defensiveWinShares(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+  teamPossessions: number | null | undefined,
+  teamGames: number | null | undefined,
+  league: WinSharesLeagueContext,
+): NullableNumber {
+  const lgPtsPerPoss = league.pointsPerPossession;
+  const dRtg = individualDefensiveRating(player, team, opponent, teamPossessions);
+  const mppw = marginalPointsPerWin(teamPossessions, teamGames, lgPtsPerPoss);
+  const mp = player.minutes;
+  const teamMp = team.minutes;
+
+  if (
+    !isFiniteNumber(lgPtsPerPoss) ||
+    !isFiniteNumber(dRtg) ||
+    !isFiniteNumber(mppw) ||
+    mppw === 0 ||
+    !isFiniteNumber(mp) ||
+    !isFiniteNumber(teamMp) ||
+    teamMp === 0 ||
+    !isFiniteNumber(teamPossessions)
+  ) {
+    return null;
+  }
+
+  const marginalDefense =
+    (mp / teamMp) * teamPossessions * (1.08 * lgPtsPerPoss - dRtg / 100);
+  return marginalDefense / mppw;
+}
+
+/** Win Shares = Offensive Win Shares + Defensive Win Shares. */
+export function winShares(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+  teamPossessions: number | null | undefined,
+  teamGames: number | null | undefined,
+  league: WinSharesLeagueContext,
+): NullableNumber {
+  const ows = offensiveWinShares(player, team, opponent, teamPossessions, teamGames, league);
+  const dws = defensiveWinShares(player, team, opponent, teamPossessions, teamGames, league);
+
+  if (!isFiniteNumber(ows) || !isFiniteNumber(dws)) {
+    return null;
+  }
+
+  return ows + dws;
+}
+
 export function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }

@@ -17,17 +17,20 @@ import {
 import {
   assistPercentage,
   blockPercentage,
+  defensiveWinShares,
   detectFeat,
   estimatedPossessions,
   gameScore,
   individualDefensiveRating,
   individualOffensiveRating,
   isFiniteNumber,
+  offensiveWinShares,
   reboundPercentage,
   safeRatio,
   stealPercentage,
   turnoverPercentage,
   usageRate,
+  winShares,
 } from "@/domain/metrics";
 
 /**
@@ -135,12 +138,27 @@ export function derivePlayerMetricSummaries(
   const ratingGamesByPlayer = new Map<string, number>();
   const plusMinusByPlayer = new Map<string, number>();
   const featsByPlayer = new Map<string, { dd: number; td: number; qd: number; fiveX5: number }>();
+  // Self-contained league scoring environment for Win Shares: total points and
+  // possessions across the loaded games, summed once per game (home + away).
+  // Accumulating per game — not from the per-player team/opp totals — avoids
+  // double-counting a game once per player who appeared in it.
+  let leagueEnvPoints = 0;
+  let leagueEnvPossessions = 0;
 
   for (const boxScore of boxScores) {
     const homeTeamTotals = totalsFromTeamStat(boxScore.homeTeam);
     const awayTeamTotals = totalsFromTeamStat(boxScore.awayTeam);
     const homeTeamId = boxScore.homeTeam?.teamId ?? null;
     const awayTeamId = boxScore.awayTeam?.teamId ?? null;
+
+    // Fold this game into the league environment only when both sides' team
+    // totals yield a possession estimate, so leaguePtsPerPoss stays well-defined.
+    const homePoss = estimatedPossessions(homeTeamTotals);
+    const awayPoss = estimatedPossessions(awayTeamTotals);
+    if (isFiniteNumber(homePoss) && isFiniteNumber(awayPoss)) {
+      leagueEnvPoints += homeTeamTotals.points + awayTeamTotals.points;
+      leagueEnvPossessions += homePoss + awayPoss;
+    }
 
     // Team minutes (Tm MP) are not on the team-totals payload, so recover them
     // by summing each side's player minutes. Needed for the minutes-share factor
@@ -229,6 +247,10 @@ export function derivePlayerMetricSummaries(
     }
   }
 
+  const winSharesLeague = {
+    pointsPerPossession: safeRatio(leagueEnvPoints, leagueEnvPossessions),
+  };
+
   return players.map((player) => {
     const totals = statsByPlayer.get(player.id) ?? emptyTotals();
     const teamTotals = teamTotalsByPlayer.get(player.id) ?? emptyTotals();
@@ -238,6 +260,7 @@ export function derivePlayerMetricSummaries(
     const ratingTeamTotals = ratingTeamTotalsByPlayer.get(player.id) ?? emptyTotals();
     const ratingOppTotals = ratingOppTotalsByPlayer.get(player.id) ?? emptyTotals();
     const ratingGames = ratingGamesByPlayer.get(player.id) ?? 0;
+    const ratingTeamPossessions = estimatedPossessions(ratingTeamTotals);
     const seasonStat = seasonStatsByPlayer.get(player.id) ?? null;
     const gameScores = gameScoresByPlayer.get(player.id) ?? [];
     const gameScoreTotal =
@@ -314,7 +337,31 @@ export function derivePlayerMetricSummaries(
         ratingPlayerTotals,
         ratingTeamTotals,
         ratingOppTotals,
-        estimatedPossessions(ratingTeamTotals),
+        ratingTeamPossessions,
+      ),
+      offensiveWinShares: offensiveWinShares(
+        ratingPlayerTotals,
+        ratingTeamTotals,
+        ratingOppTotals,
+        ratingTeamPossessions,
+        ratingGames,
+        winSharesLeague,
+      ),
+      defensiveWinShares: defensiveWinShares(
+        ratingPlayerTotals,
+        ratingTeamTotals,
+        ratingOppTotals,
+        ratingTeamPossessions,
+        ratingGames,
+        winSharesLeague,
+      ),
+      winShares: winShares(
+        ratingPlayerTotals,
+        ratingTeamTotals,
+        ratingOppTotals,
+        ratingTeamPossessions,
+        ratingGames,
+        winSharesLeague,
       ),
       ratingGames,
       gameScoreTotal,
