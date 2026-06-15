@@ -30,7 +30,6 @@ import {
   stealPercentage,
   turnoverPercentage,
   usageRate,
-  winShares,
 } from "@/domain/metrics";
 
 /**
@@ -142,6 +141,13 @@ export function derivePlayerMetricSummaries(
   // possessions across the loaded games, summed once per game (home + away).
   // Accumulating per game — not from the per-player team/opp totals — avoids
   // double-counting a game once per player who appeared in it.
+  // Note the deliberate scope asymmetry: this baseline folds in every game with
+  // finite team possessions, whereas the Win Shares numerators (PProd, TotPoss,
+  // DRtg, teamPace) only use games passing hasRatingFields. So lgPtsPerPoss is
+  // drawn from a superset of the games feeding the individual ratings. That's
+  // intentional — the scoring environment is stable across games and stays
+  // defined even when a game is too incomplete for the per-player ratings; don't
+  // gate this accumulation behind hasRatingFields without re-checking every WS.
   let leagueEnvPoints = 0;
   let leagueEnvPossessions = 0;
 
@@ -261,6 +267,25 @@ export function derivePlayerMetricSummaries(
     const ratingOppTotals = ratingOppTotalsByPlayer.get(player.id) ?? emptyTotals();
     const ratingGames = ratingGamesByPlayer.get(player.id) ?? 0;
     const ratingTeamPossessions = estimatedPossessions(ratingTeamTotals);
+    // Compute the two Win Shares halves once; the total is their sum (null if
+    // either half is null), so we avoid recomputing the Oliver PProd/DRtg
+    // machinery a third time via winShares().
+    const ows = offensiveWinShares(
+      ratingPlayerTotals,
+      ratingTeamTotals,
+      ratingOppTotals,
+      ratingTeamPossessions,
+      ratingGames,
+      winSharesLeague,
+    );
+    const dws = defensiveWinShares(
+      ratingPlayerTotals,
+      ratingTeamTotals,
+      ratingOppTotals,
+      ratingTeamPossessions,
+      ratingGames,
+      winSharesLeague,
+    );
     const seasonStat = seasonStatsByPlayer.get(player.id) ?? null;
     const gameScores = gameScoresByPlayer.get(player.id) ?? [];
     const gameScoreTotal =
@@ -339,30 +364,9 @@ export function derivePlayerMetricSummaries(
         ratingOppTotals,
         ratingTeamPossessions,
       ),
-      offensiveWinShares: offensiveWinShares(
-        ratingPlayerTotals,
-        ratingTeamTotals,
-        ratingOppTotals,
-        ratingTeamPossessions,
-        ratingGames,
-        winSharesLeague,
-      ),
-      defensiveWinShares: defensiveWinShares(
-        ratingPlayerTotals,
-        ratingTeamTotals,
-        ratingOppTotals,
-        ratingTeamPossessions,
-        ratingGames,
-        winSharesLeague,
-      ),
-      winShares: winShares(
-        ratingPlayerTotals,
-        ratingTeamTotals,
-        ratingOppTotals,
-        ratingTeamPossessions,
-        ratingGames,
-        winSharesLeague,
-      ),
+      offensiveWinShares: ows,
+      defensiveWinShares: dws,
+      winShares: isFiniteNumber(ows) && isFiniteNumber(dws) ? ows + dws : null,
       ratingGames,
       gameScoreTotal,
       gameScoreAverage: safeRatio(gameScoreTotal, gameScores.length),
