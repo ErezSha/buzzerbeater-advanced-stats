@@ -470,14 +470,17 @@ function qAssist(player: RatingStatLine, team: RatingStatLine): NullableNumber {
   return term1 + term2;
 }
 
-/** Scoring Possessions (ScPoss) — possessions the player ends by scoring. */
-export function scoringPossessions(
+/**
+ * ScPoss from a precomputed team context and qAST. Used internally so ORtg can
+ * share `ctx`/`qast` across ScPoss, TotPoss, and PProd instead of recomputing
+ * them for each. The public `scoringPossessions` is a thin wrapper.
+ */
+function scoringPossessionsInternal(
   player: RatingStatLine,
   team: RatingStatLine,
-  opponent: RatingStatLine,
+  ctx: TeamOffenseContext | null,
+  qast: NullableNumber,
 ): NullableNumber {
-  const ctx = teamOffenseContext(team, opponent);
-  const qast = qAssist(player, team);
   const fgm = player.fieldGoals;
   const fga = player.fieldGoalAttempts;
   const ftm = player.freeThrows;
@@ -530,14 +533,26 @@ export function scoringPossessions(
   );
 }
 
-/** Individual Total Possessions (TotPoss) = ScPoss + FGxPoss + FTxPoss + TOV. */
-export function individualTotalPossessions(
+/** Scoring Possessions (ScPoss) — possessions the player ends by scoring. */
+export function scoringPossessions(
   player: RatingStatLine,
   team: RatingStatLine,
   opponent: RatingStatLine,
 ): NullableNumber {
-  const scPoss = scoringPossessions(player, team, opponent);
-  const ctx = teamOffenseContext(team, opponent);
+  return scoringPossessionsInternal(
+    player,
+    team,
+    teamOffenseContext(team, opponent),
+    qAssist(player, team),
+  );
+}
+
+/** TotPoss from a precomputed team context and ScPoss (see scoringPossessionsInternal). */
+function totalPossessionsInternal(
+  player: RatingStatLine,
+  ctx: TeamOffenseContext | null,
+  scPoss: NullableNumber,
+): NullableNumber {
   const fgm = player.fieldGoals;
   const fga = player.fieldGoalAttempts;
   const ftm = player.freeThrows;
@@ -562,14 +577,24 @@ export function individualTotalPossessions(
   return scPoss + fgxPoss + ftxPoss + tov;
 }
 
-/** Individual Points Produced (PProd). */
-export function pointsProduced(
+/** Individual Total Possessions (TotPoss) = ScPoss + FGxPoss + FTxPoss + TOV. */
+export function individualTotalPossessions(
   player: RatingStatLine,
   team: RatingStatLine,
   opponent: RatingStatLine,
 ): NullableNumber {
   const ctx = teamOffenseContext(team, opponent);
-  const qast = qAssist(player, team);
+  const scPoss = scoringPossessionsInternal(player, team, ctx, qAssist(player, team));
+  return totalPossessionsInternal(player, ctx, scPoss);
+}
+
+/** PProd from a precomputed team context and qAST (see scoringPossessionsInternal). */
+function pointsProducedInternal(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  ctx: TeamOffenseContext | null,
+  qast: NullableNumber,
+): NullableNumber {
   const fgm = player.fieldGoals;
   const fga = player.fieldGoalAttempts;
   const tpm = player.threePointMakes;
@@ -631,14 +656,33 @@ export function pointsProduced(
   );
 }
 
+/** Individual Points Produced (PProd). */
+export function pointsProduced(
+  player: RatingStatLine,
+  team: RatingStatLine,
+  opponent: RatingStatLine,
+): NullableNumber {
+  return pointsProducedInternal(
+    player,
+    team,
+    teamOffenseContext(team, opponent),
+    qAssist(player, team),
+  );
+}
+
 /** Individual Offensive Rating — points produced per 100 individual possessions. */
 export function individualOffensiveRating(
   player: RatingStatLine,
   team: RatingStatLine,
   opponent: RatingStatLine,
 ): NullableNumber {
-  const pProd = pointsProduced(player, team, opponent);
-  const totPoss = individualTotalPossessions(player, team, opponent);
+  // Compute the shared team context and qAST once, then thread them through
+  // ScPoss → TotPoss and PProd rather than recomputing inside each.
+  const ctx = teamOffenseContext(team, opponent);
+  const qast = qAssist(player, team);
+  const scPoss = scoringPossessionsInternal(player, team, ctx, qast);
+  const totPoss = totalPossessionsInternal(player, ctx, scPoss);
+  const pProd = pointsProducedInternal(player, team, ctx, qast);
   return safeRatio(isFiniteNumber(pProd) ? 100 * pProd : pProd, totPoss);
 }
 
